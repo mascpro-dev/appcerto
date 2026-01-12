@@ -2,7 +2,8 @@
 
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { useEffect, useState } from "react"
-import { CourseCard } from "@/components/course-card" // Vamos reusar o card visualmente
+// CORREÇÃO AQUI: Tirei as chaves { } do CourseCard
+import CourseCard from "@/components/course-card" 
 import { Loader2 } from "lucide-react"
 
 export default function LojaPage() {
@@ -137,10 +138,10 @@ export default function LojaPage() {
           {filteredProducts.map((product) => (
             <CourseCard
               key={product.id}
-              course={product as any} // O TRUQUE: 'as any' evita erro vermelho
+              course={product as any}
               showPrice={true}
               actionLabel="Comprar"
-              actionHref={`/loja/${product.slug}`} // Link corrigido para Loja
+              actionHref={`/loja/${product.slug}`}
             />
           ))}
         </div>
