@@ -1,20 +1,52 @@
 "use client"
 
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft } from "lucide-react"
-import { Play, Star, Clock, CheckCircle2 } from "lucide-react"
-
-const cursosAcademy = [
-  { id: 1, title: "Colorimetria Avançada", aulas: 12, duracao: "4h", image: "https://placehold.co/600x400/1e293b/FFF?text=Master+Color" },
-  { id: 2, title: "Técnicas de Mechas", aulas: 8, duracao: "3h", image: "https://placehold.co/600x400/334155/FFF?text=Mechas+Pro" },
-  { id: 3, title: "Corte Masculino", aulas: 15, duracao: "6h", image: "https://placehold.co/600x400/475569/FFF?text=Barber+Expert" },
-  { id: 4, title: "Penteados de Gala", aulas: 6, duracao: "2h", image: "https://placehold.co/600x400/0f172a/FFF?text=Penteados" },
-]
+import { Play, ArrowLeft, Loader2, GraduationCap, Star } from "lucide-react"
 
 export default function AcademyPage() {
   const router = useRouter()
+  const [courses, setCourses] = useState<any[]>([])
+  const [categories, setCategories] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const supabase = createClientComponentClient()
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true)
+        // Puxa Categorias
+        const { data: catData } = await supabase.from('Category').select('*')
+        // Puxa Cursos Publicados
+        const { data: courseData } = await supabase
+          .from('Course')
+          .select(`*, Category (id, name)`)
+          .eq('isPublished', true)
+
+        if (catData) setCategories(catData)
+        if (courseData) setCourses(courseData)
+      } catch (error) {
+        console.error("Erro ao carregar Academy:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="flex h-[50vh] w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      </div>
+    )
+  }
+
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-10">
+      
+      {/* BOTÃO VOLTAR E TÍTULO */}
       <div className="flex items-center gap-4 mb-8">
         <button 
           onClick={() => router.back()} 
@@ -22,63 +54,67 @@ export default function AcademyPage() {
         >
           <ArrowLeft size={20} />
         </button>
-        <h1 className="text-2xl font-bold text-slate-800">Loja Oficial</h1>
-      </div>
-      {/* ------------------------------------------------ */}
-        <h1 className="text-3xl font-bold text-slate-900">Masc PRO Academy</h1>
-        <p className="text-slate-500 mt-2">Sua jornada de especialização profissional.</p>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Masc PRO Academy</h1>
+          <p className="text-xs text-slate-500 uppercase tracking-widest font-semibold">Sua Especialização</p>
+        </div>
       </div>
 
-      {/* Carrossel de Cursos Disponíveis */}
-      <section>
-        <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-          <Star className="text-yellow-500 fill-yellow-500" size={20} />
-          Cursos em Destaque
-        </h2>
+      {/* SEÇÃO ESTILO NETFLIX (POR CATEGORIA) */}
+      {categories.map((category) => {
+        const categoryCourses = courses.filter(c => c.categoryId === category.id)
         
-        <div className="flex overflow-x-auto gap-6 pb-6 -mx-4 px-4 no-scrollbar snap-x">
-          {cursosAcademy.map((curso) => (
-            <div key={curso.id} className="min-w-[280px] md:min-w-[340px] snap-start group bg-white rounded-2xl overflow-hidden border border-gray-100 hover:shadow-2xl transition-all duration-500 cursor-pointer">
-              <div className="aspect-video relative overflow-hidden">
-                <img src={curso.image} className="w-full h-full object-cover group-hover:scale-110 transition duration-700" alt={curso.title} />
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                  <div className="bg-white p-3 rounded-full shadow-xl translate-y-4 group-hover:translate-y-0 transition duration-500">
-                    <Play className="text-slate-900 fill-slate-900 h-6 w-6" />
+        if (categoryCourses.length === 0) return null
+
+        return (
+          <div key={category.id} className="mb-12">
+            <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 px-1">
+              <div className="w-1 h-6 bg-blue-600 rounded-full"></div>
+              {category.name}
+            </h2>
+
+            {/* CARROSSEL HORIZONTAL NETFLIX */}
+            <div className="flex overflow-x-auto gap-6 pb-6 -mx-4 px-4 no-scrollbar snap-x">
+              {categoryCourses.map((curso) => (
+                <div 
+                  key={curso.id} 
+                  onClick={() => router.push(`/courses/${curso.id}`)}
+                  className="min-w-[280px] md:min-w-[360px] snap-start group cursor-pointer bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-500"
+                >
+                  <div className="aspect-video relative overflow-hidden">
+                    <img 
+                      src={curso.imageUrl || "https://placehold.co/600x400/1e293b/FFF?text=Curso"} 
+                      className="w-full h-full object-cover group-hover:scale-110 transition duration-700" 
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition duration-500 flex items-center justify-center">
+                      <div className="bg-white p-4 rounded-full shadow-2xl translate-y-4 group-hover:translate-y-0 transition duration-500">
+                        <Play className="text-slate-900 fill-slate-900 h-6 w-6" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-5">
+                    <h3 className="font-bold text-slate-800 text-lg mb-2 line-clamp-1">{curso.title}</h3>
+                    <div className="flex items-center gap-3 text-xs text-slate-500">
+                       <span className="bg-slate-100 px-2 py-1 rounded font-medium text-slate-600">
+                         {category.name}
+                       </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="p-5">
-                <h3 className="font-bold text-slate-800 text-lg mb-3 line-clamp-1">{curso.title}</h3>
-                <div className="flex items-center gap-4 text-xs text-slate-500">
-                  <span className="flex items-center gap-1"><Play size={14} /> {curso.aulas} aulas</span>
-                  <span className="flex items-center gap-1"><Clock size={14} /> {curso.duracao}</span>
-                </div>
-                <button className="w-full mt-4 bg-slate-50 py-2 rounded-lg text-sm font-bold text-slate-700 group-hover:bg-blue-600 group-hover:text-white transition">
-                  Começar agora
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Sessão de Concluídos (Simulação) */}
-      <section className="bg-slate-900 rounded-3xl p-8 text-white">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <div className="bg-green-500/20 p-4 rounded-2xl border border-green-500/30 text-green-400">
-                <CheckCircle2 size={32} />
-            </div>
-            <div>
-                <h3 className="text-xl font-bold">Certificados Prontos</h3>
-                <p className="text-slate-400 text-sm">Você já possui 3 certificações Masc PRO.</p>
+              ))}
             </div>
           </div>
-          <button className="bg-white text-slate-900 px-6 py-3 rounded-xl font-bold hover:bg-blue-400 hover:text-white transition">
-            Baixar Certificados
-          </button>
+        )
+      })}
+
+      {/* Caso não tenha nada no banco */}
+      {courses.length === 0 && (
+        <div className="text-center py-20 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
+          <GraduationCap className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+          <h3 className="text-lg font-medium text-gray-900">Nenhum curso encontrado</h3>
+          <p className="text-gray-500">Em breve novos conteúdos exclusivos.</p>
         </div>
-      </section>
+      )}
     </div>
   )
 }
