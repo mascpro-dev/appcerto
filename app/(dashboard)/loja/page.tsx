@@ -34,7 +34,7 @@ export default function LojaPage() {
 
   const fetchData = async () => {
     try {
-     const [categoriesRes, coursesRes] = await Promise.all([
+     const [categoriesRes, ProdctRes] = await Promise.all([
       // 1. Busca as Categorias de PRODUTOS (não de cursos)
       supabase.from('ProductCategory').select('*'),
       
