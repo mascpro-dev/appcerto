@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { ArrowLeft, Clock, Loader2, PlayCircle } from "lucide-react"
@@ -8,7 +8,10 @@ import XPModal from "@/components/xp-modal"
 
 export default function CoursePlayerPage() {
   const router = useRouter()
-  const { id } = useParams()
+  const params = useParams()
+  // Garante que o ID seja uma string segura ou null
+  const id = params?.id as string
+  
   const supabase = createClientComponentClient()
 
   const [course, setCourse] = useState<any>(null)
@@ -17,10 +20,12 @@ export default function CoursePlayerPage() {
   const [showXPModal, setShowXPModal] = useState(false)
   const [xpGanho, setXpGanho] = useState(0)
 
-  // 🛠️ FUNÇÃO MÁGICA: Converte qualquer link do YouTube para Embed Profissional
+  // UseRef para evitar recriação do timer e problemas de closure
+  const secondsRef = useRef(0)
+
+  // 🛠️ FUNÇÃO MÁGICA (Mantida)
   const formatYoutubeUrl = (url: string) => {
     if (!url) return null;
-    
     let videoId = "";
     if (url.includes("v=")) {
       videoId = url.split("v=")[1].split("&")[0];
@@ -29,45 +34,14 @@ export default function CoursePlayerPage() {
     } else if (url.includes("embed/")) {
       videoId = url.split("embed/")[1].split("?")[0];
     }
-
-    // Parâmetros: 
-    // rel=0 (não mostra vídeos de outros canais no fim)
-    // modestbranding=1 (esconde logo do YT)
-    // showinfo=0 (esconde título e uploader)
-    // controls=1 (mantém controles para o aluno)
     return `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&showinfo=0&iv_load_policy=3&color=white`;
   }
 
-  useEffect(() => {
-    const fetchCourse = async () => {
-      const { data } = await supabase
-        .from('Course')
-        .select('*')
-        .eq('id', id)
-        .single()
-      
-      if (data) setCourse(data)
-      setLoading(false)
-    }
-    fetchCourse()
-  }, [id, supabase])
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setSecondsActive((prev) => prev + 1)
-    }, 1000)
-
-    if (secondsActive >= 900) {
-      adicionarXPAtividade()
-      setSecondsActive(0)
-    }
-
-    return () => clearInterval(interval)
-  }, [secondsActive])
-
-  const adicionarXPAtividade = async () => {
+  // Função isolada com useCallback para performance
+  const adicionarXPAtividade = useCallback(async () => {
     try {
-      const { data: { user } } = await (supabase.auth as any).getUser();
+      const { data: { user } } = await supabase.auth.getUser();
+      // TRAVA DE SEGURANÇA: Impede erro se o usuário caiu
       if (!user) return
 
       const { data: profile } = await supabase
@@ -84,17 +58,64 @@ export default function CoursePlayerPage() {
 
       const totalAdicionar = Math.floor(valorBase * multiplicador)
 
-      await supabase
+      const { error } = await supabase
         .from('profiles')
         .update({ xp: (profile?.xp || 0) + totalAdicionar })
         .eq('id', user.id)
 
-      setXpGanho(totalAdicionar)
-      setShowXPModal(true)
+      if (!error) {
+          setXpGanho(totalAdicionar)
+          setShowXPModal(true)
+      }
     } catch (error) {
       console.error("Erro ao processar XP:", error)
     }
-  }
+  }, [supabase])
+
+  // Busca do Curso Blindada
+  useEffect(() => {
+    const fetchCourse = async () => {
+      // 1. TRAVA: Se não tem ID, nem tenta buscar (evita erro 400)
+      if (!id) return;
+
+      const { data, error } = await supabase
+        .from('Course')
+        .select('*')
+        .eq('id', id)
+        .single()
+      
+      if (error) {
+          console.error("Erro ao carregar curso:", error)
+          // Opcional: router.push('/academy') se der erro
+      } else {
+          setCourse(data)
+      }
+      setLoading(false)
+    }
+    fetchCourse()
+  }, [id, supabase]) // Removemos router das dependências para evitar loops
+
+  // Timer Otimizado (Não recria o intervalo a cada segundo)
+  useEffect(() => {
+    // Só inicia o timer se o curso já carregou
+    if (loading) return;
+
+    const interval = setInterval(() => {
+      setSecondsActive((prev) => {
+        const novoTempo = prev + 1
+        secondsRef.current = novoTempo // Atualiza ref para verificação síncrona se necessário
+
+        // Verifica 900 segundos (15 min)
+        if (novoTempo >= 900) {
+           adicionarXPAtividade()
+           return 0 // Reseta
+        }
+        return novoTempo
+      })
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [loading, adicionarXPAtividade]) // Dependências limpas
 
   if (loading) return (
     <div className="flex h-screen items-center justify-center bg-white">
@@ -139,7 +160,7 @@ export default function CoursePlayerPage() {
           <div className="flex items-center gap-3">
              <span className="px-3 py-1 bg-blue-100 text-blue-700 text-[10px] font-black rounded-full uppercase tracking-tighter">Masc Academy</span>
              <span className="text-slate-300">•</span>
-             <span className="text-slate-400 text-xs font-bold uppercase tracking-widest">Aula {course?.id}</span>
+             <span className="text-slate-400 text-xs font-bold uppercase tracking-widest">Aula {id}</span>
           </div>
           <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-tight">
             {course?.title || "Aula em Processamento"}

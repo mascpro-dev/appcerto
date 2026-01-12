@@ -11,19 +11,32 @@ export default function XPBar() {
 
   useEffect(() => {
     const getXP = async () => {
-      // Valida a sessão para evitar erro 401
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      if (user) {
+      try {
+        // 1. Pega o usuário atual
+        const { data: { user } } = await supabase.auth.getUser()
+        
+        // 2. TRAVA DE SEGURANÇA: Se não tiver user ou user.id, para aqui.
+        // Isso impede o erro "id=eq.undefined" no banco.
+        if (!user || !user.id) {
+            setLoading(false)
+            return
+        }
+
+        // 3. Se passou pela trava, faz a busca segura
         const { data, error } = await supabase
           .from('profiles')
           .select('xp, tipo_usuario')
           .eq('id', user.id)
           .single()
         
-        if (!error) setPerfil(data)
+        if (!error && data) {
+            setPerfil(data)
+        }
+      } catch (error) {
+        console.error("Erro ao carregar XP:", error)
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     }
     getXP()
   }, [supabase])
