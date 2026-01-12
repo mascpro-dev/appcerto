@@ -4,16 +4,16 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { useEffect, useState } from "react"
 import { Loader2, ShoppingCart } from "lucide-react"
 import Link from "next/link"
-import Image from "next/image"
+// REMOVI O IMPORT DE IMAGE QUE TRAVAVA
 
-// --- COMPONENTE VISUAL DO CARD (CRIADO AQUI MESMO PARA NÃO DAR ERRO) ---
+// --- CARD COM IMG SIMPLES (PARA NÃO TRAVAR O DEPLOY) ---
 const ProductCard = ({ product }: { product: any }) => {
   return (
     <div className="group hover:shadow-sm transition overflow-hidden border rounded-lg p-3 h-full flex flex-col bg-white">
       <div className="relative w-full aspect-video rounded-md overflow-hidden bg-gray-100">
-        <Image
-          fill
-          className="object-cover"
+        {/* USANDO IMG NORMAL PARA EVITAR ERRO DE CONFIGURAÇÃO */}
+        <img
+          className="w-full h-full object-cover"
           alt={product.title || product.name || "Produto"}
           src={product.image_url || "https://placehold.co/600x400?text=Foto"}
         />
@@ -47,7 +47,6 @@ const ProductCard = ({ product }: { product: any }) => {
   )
 }
 
-// --- PÁGINA DA LOJA ---
 export default function LojaPage() {
   const [categories, setCategories] = useState<any[]>([])
   const [products, setProducts] = useState<any[]>([])
@@ -60,13 +59,7 @@ export default function LojaPage() {
   const fetchData = async () => {
     try {
       setLoading(true)
-      
-      // 1. Busca Categorias
-      const { data: categoriesData } = await supabase
-        .from('ProductCategory')
-        .select('*')
-
-      // 2. Busca Produtos
+      const { data: categoriesData } = await supabase.from('ProductCategory').select('*')
       const { data: productsData } = await supabase
         .from('Product')
         .select(`*, ProductCategory (id, name, slug)`)
@@ -77,7 +70,6 @@ export default function LojaPage() {
         setProducts(productsData)
         setFilteredProducts(productsData)
       }
-      
     } catch (error) {
       console.log("Erro:", error)
     } finally {
@@ -115,44 +107,19 @@ export default function LojaPage() {
     <div className="p-6">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-800">Loja Oficial</h1>
-        <p className="text-gray-500 mt-2">
-          Produtos Profissionais e Home Care
-        </p>
+        <p className="text-gray-500 mt-2">Produtos Profissionais e Home Care</p>
       </div>
-
       <div className="flex flex-wrap gap-2 mb-8">
-        <button
-          onClick={() => setSelectedCategory(null)}
-          className={`px-4 py-2 rounded-full text-sm font-medium transition-colors border
-            ${selectedCategory === null 
-              ? 'bg-blue-600 text-white border-blue-600' 
-              : 'bg-white text-gray-600 hover:bg-gray-50 border-gray-200'}`}
-        >
-          Todos
-        </button>
+        <button onClick={() => setSelectedCategory(null)} className={`px-4 py-2 rounded-full text-sm font-medium transition-colors border ${selectedCategory === null ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 hover:bg-gray-50 border-gray-200'}`}>Todas</button>
         {categories.map((category) => (
-          <button
-            key={category.id}
-            onClick={() => setSelectedCategory(category.id)}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors border
-              ${selectedCategory === category.id 
-                ? 'bg-blue-600 text-white border-blue-600' 
-                : 'bg-white text-gray-600 hover:bg-gray-50 border-gray-200'}`}
-          >
-            {category.name}
-          </button>
+          <button key={category.id} onClick={() => setSelectedCategory(category.id)} className={`px-4 py-2 rounded-full text-sm font-medium transition-colors border ${selectedCategory === category.id ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 hover:bg-gray-50 border-gray-200'}`}>{category.name}</button>
         ))}
       </div>
-
       {filteredProducts.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed">
-          <p className="text-gray-500">Nenhum produto encontrado.</p>
-        </div>
+        <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed"><p className="text-gray-500">Nenhum produto encontrado.</p></div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {filteredProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
+          {filteredProducts.map((product) => (<ProductCard key={product.id} product={product} />))}
         </div>
       )}
     </div>
