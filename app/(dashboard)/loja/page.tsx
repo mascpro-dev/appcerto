@@ -123,7 +123,7 @@ export default function LojaPage() {
                 course={course} 
                 showPrice={true}
                 actionLabel="Comprar"
-                actionHref={`/loja/${course.id}`}
+                actionHref={`/academy/courses/${course.id}`}
               />
             ))}
           </div>
