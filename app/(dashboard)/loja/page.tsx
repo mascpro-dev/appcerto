@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Category, Course } from '@/lib/types'
 import CategoryFilter from '@/components/category-filter'
-import CourseCard from '@/components/course-card'
+import CourseCard from '@/components/prouct'
 import { Loader2, ShoppingCart } from 'lucide-react'
 
 export default function LojaPage() {
