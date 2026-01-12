@@ -1,5 +1,7 @@
 "use client"
 
+import { useRouter } from "next/navigation"
+import { ArrowLeft } from "lucide-react"
 import { Play, Star, Clock, CheckCircle2 } from "lucide-react"
 
 const cursosAcademy = [
@@ -10,9 +12,19 @@ const cursosAcademy = [
 ]
 
 export default function AcademyPage() {
+  const router = useRouter()
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-10">
-      <div>
+      <div className="flex items-center gap-4 mb-8">
+        <button 
+          onClick={() => router.back()} 
+          className="p-2 hover:bg-white rounded-full transition-all border shadow-sm bg-slate-50"
+        >
+          <ArrowLeft size={20} />
+        </button>
+        <h1 className="text-2xl font-bold text-slate-800">Loja Oficial</h1>
+      </div>
+      {/* ------------------------------------------------ */}
         <h1 className="text-3xl font-bold text-slate-900">Masc PRO Academy</h1>
         <p className="text-slate-500 mt-2">Sua jornada de especialização profissional.</p>
       </div>
