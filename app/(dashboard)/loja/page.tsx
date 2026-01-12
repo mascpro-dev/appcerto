@@ -34,17 +34,21 @@ export default function LojaPage() {
 
   const fetchData = async () => {
     try {
-      const [categoriesRes, coursesRes] = await Promise.all([
-        supabase.from('Category').select('*'),
-        supabase.from('Product').select(`
-          *,
-          Category (
-            id,
-            name,
-            slug
-          )
-        `)
-      ])
+     const [categoriesRes, coursesRes] = await Promise.all([
+      // 1. Busca as Categorias de PRODUTOS (não de cursos)
+      supabase.from('ProductCategory').select('*'),
+      
+      // 2. Busca os Produtos e conecta com a categoria certa
+      supabase.from('Product').select(`
+        *,
+        ProductCategory (
+          id,
+          name,
+          slug
+        )
+      `)
+      .eq('isPublished', true)
+    ])
 
       if (categoriesRes.data) {
         setCategories(categoriesRes.data)
