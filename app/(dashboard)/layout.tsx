@@ -18,12 +18,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     router.push("/login")
   }
 
-  const navItems = [
-    { href: "/", label: "Meu Nível", icon: LayoutDashboard },
-    { href: "/academy", label: "Academy", icon: GraduationCap },
-    { href: "/agenda", label: "Agenda", icon: Calendar },
-    { href: "/loja", label: "Loja", icon: ShoppingBag },
-  ]
+  // Substitua a lista navItems por esta:
+const navItems = [
+  { href: "/", label: "Meu Nível", icon: LayoutDashboard }, // Este é o link para a Home
+  { href: "/academy", label: "Academy", icon: GraduationCap },
+  { href: "/agenda", label: "Agenda", icon: Calendar },
+  { href: "/loja", label: "Loja", icon: ShoppingBag },
+]
 
   return (
     <div className="min-h-screen bg-[#0f172a] flex flex-col md:flex-row font-sans">
