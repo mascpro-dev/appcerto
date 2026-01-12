@@ -6,38 +6,16 @@ export async function middleware(req: NextRequest) {
   const res = NextResponse.next()
   const supabase = createMiddlewareClient({ req, res })
 
-  // CORREÇÃO: Usando getUser() que é o método suportado
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { data: { session } } = await supabase.auth.getSession()
 
-  // 1. Se o usuário NÃO está logado e tenta acessar as páginas internas
-  if (!user && !req.nextUrl.pathname.startsWith('/login')) {
-    const redirectUrl = req.nextUrl.clone()
-    redirectUrl.pathname = '/login'
-    return NextResponse.redirect(redirectUrl)
-  }
-
-  // 2. Se o usuário JÁ ESTÁ logado e tenta ir para a página de login
-  if (user && req.nextUrl.pathname.startsWith('/login')) {
-    const redirectUrl = req.nextUrl.clone()
-    redirectUrl.pathname = '/' // Manda para a dashboard
-    return NextResponse.redirect(redirectUrl)
+  // Se não estiver logado e tentar acessar o dashboard, manda para o login
+  if (!session && req.nextUrl.pathname.startsWith('/(dashboard)')) {
+    return NextResponse.redirect(new URL('/login', req.url))
   }
 
   return res
 }
 
-// Configuração de quais páginas o middleware deve atuar
 export const config = {
-  matcher: [
-    /*
-     * Protege todas as rotas, exceto:
-     * - api (rotas de API)
-     * - _next/static (arquivos estáticos)
-     * - _next/image (otimização de imagens)
-     * - favicon.ico, logo.png, etc (arquivos públicos)
-     */
-    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.png$|.*\\.jpg$).*)',
-  ],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 }
