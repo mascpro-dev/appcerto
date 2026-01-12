@@ -2,135 +2,111 @@
 
 import { useEffect, useState } from "react"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
-import { useRouter } from "next/navigation"
-import { 
-  ShoppingBag, Loader2, Package, Search, Filter, Zap, ArrowRight, CheckCircle 
-} from "lucide-react"
+import { ShoppingBag, Loader2, Package, AlertCircle } from "lucide-react"
 import XPBar from "@/components/xp-bar"
-import { toast, Toaster } from "react-hot-toast"
+import { toast } from "react-hot-toast"
 
 export default function LojaPage() {
   const supabase = createClientComponentClient()
-  const router = useRouter()
+  const [produtos, setProdutos] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [perfil, setPerfil] = useState<any>(null)
-  const [comprando, setComprando] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true)
+      
+      // 1. Pega o usuário logado
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.push('/login')
-        return
+      
+      if (user) {
+        // Carrega o perfil do usuário
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single()
+        setPerfil(profileData)
+
+        // 2. CORREÇÃO DO ERRO 406: Carrega produtos sem filtros 'undefined'
+        // Busca todos os produtos ativos
+        const { data: productsData, error: prodError } = await supabase
+          .from('Product') // Certifique-se que o nome da tabela é 'Product' com P maiúsculo como no erro
+          .select('*')
+          .order('name', { ascending: true })
+
+        if (prodError) {
+          console.error("Erro ao carregar produtos:", prodError)
+          toast.error("Erro ao carregar vitrine.")
+        } else {
+          setProdutos(productsData || [])
+        }
       }
-      
-      const { data } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
-      
-      setPerfil(data)
       setLoading(false)
     }
-    fetchData()
-  }, [supabase, router])
 
-  // FUNÇÃO MÁGICA: ADICIONAR XP AO COMPRAR
-  const handleCompra = async (produtoNome: string, xpGanho: number) => {
-    setComprando(produtoNome)
+    fetchData()
+  }, [supabase])
+
+  const handleCompra = async (produto: any) => {
+    if (!perfil) return;
     
     try {
-      const novoXP = (perfil?.xp || 0) + xpGanho
-      
+      const novoXP = (perfil.xp || 0) + (produto.xp_value || 500)
       const { error } = await supabase
         .from('profiles')
         .update({ xp: novoXP })
         .eq('id', perfil.id)
 
       if (error) throw error
-
-      // Atualiza o estado local para a UI reagir na hora
-      setPerfil({ ...perfil, xp: novoXP })
       
-      toast.success(`Compra realizada! +${xpGanho} XP adicionados!`, {
-        icon: '🚀',
-        style: { borderRadius: '16px', background: '#0f172a', color: '#fff', fontWeight: 'bold' }
-      })
-
-    } catch (error) {
-      toast.error("Erro ao processar compra.")
-    } finally {
-      setComprando(null)
+      setPerfil({ ...perfil, xp: novoXP })
+      toast.success(`${produto.name} adquirido! XP atualizado.`)
+    } catch (e) {
+      toast.error("Erro ao processar XP.")
     }
   }
 
-  const produtos = [
-    { id: '1', nome: "Kit Progressiva Masc PRO", preco: "189,90", xp: 500, tag: "Mais Vendido" },
-    { id: '2', nome: "Sérum Finalizador Platinum", preco: "89,00", xp: 250, tag: "Destaque" },
-    { id: '3', nome: "Máscara de Reconstrução", preco: "120,00", xp: 350, tag: "Novo" },
-    { id: '4', nome: "Curso Técnicas de Corte", preco: "497,00", xp: 2000, tag: "Academy" },
-  ]
-
   if (loading) return (
-    <div className="flex h-screen items-center justify-center bg-white">
+    <div className="flex h-screen items-center justify-center">
       <Loader2 className="animate-spin text-blue-600" size={40} />
     </div>
   )
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-10 space-y-8">
-      <Toaster position="top-center" />
-      
-      <div className="max-w-7xl mx-auto space-y-8">
-        
-        {/* HEADER */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-blue-600 font-black text-[10px] uppercase tracking-[0.3em] mb-2">
-              <Zap size={14} className="fill-blue-600" /> Mercado Masc PRO
-            </div>
-            <h1 className="text-5xl font-black text-slate-900 italic uppercase tracking-tighter leading-none">
-              Shop <span className="text-slate-300">Exclusivo</span>
-            </h1>
-          </div>
+    <div className="p-4 md:p-10 space-y-8 max-w-7xl mx-auto min-h-screen">
+      <h1 className="text-4xl font-black italic uppercase tracking-tighter">Shop Masc PRO</h1>
+      <XPBar />
+
+      {produtos.length === 0 ? (
+        <div className="flex flex-col items-center justify-center p-20 bg-white rounded-[40px] border border-dashed border-slate-200">
+          <Package size={48} className="text-slate-200 mb-4" />
+          <p className="text-slate-500 font-bold uppercase text-xs italic">Nenhum produto cadastrado no banco</p>
         </div>
-
-        {/* BARRA DE XP DINÂMICA */}
-        <XPBar />
-
-        {/* VITRINE */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {produtos.map((p) => (
-            <div key={p.id} className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm hover:shadow-xl transition-all group">
-              <div className="aspect-square bg-slate-50 rounded-2xl mb-6 flex items-center justify-center relative overflow-hidden">
-                <Package size={48} className="text-slate-200 group-hover:scale-110 transition-transform duration-500" />
-                <div className="absolute top-3 right-3 bg-blue-600 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase italic">
-                  +{p.xp} XP
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {produtos.map((prod) => (
+            <div key={prod.id} className="bg-white p-6 rounded-[32px] shadow-sm border border-slate-100 hover:shadow-xl transition-all group">
+              <div className="aspect-square bg-slate-50 rounded-2xl flex items-center justify-center mb-4 relative overflow-hidden">
+                <Package size={40} className="text-slate-200" />
+                <div className="absolute top-4 right-4 bg-blue-600 text-white text-[10px] font-black px-3 py-1 rounded-full italic">
+                  +{prod.xp_value || 500} XP
                 </div>
               </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">{p.tag}</p>
-                  <h4 className="text-lg font-black text-slate-900 leading-tight uppercase italic">{p.nome}</h4>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <span className="text-2xl font-black text-slate-900 italic">R$ {p.preco}</span>
-                  <button 
-                    onClick={() => handleCompra(p.nome, p.xp)}
-                    disabled={comprando === p.nome}
-                    className="p-3 bg-slate-900 text-white rounded-xl hover:bg-blue-600 transition-all active:scale-90 disabled:opacity-50"
-                  >
-                    {comprando === p.nome ? <Loader2 className="animate-spin" size={20} /> : <ShoppingBag size={20} />}
-                  </button>
-                </div>
+              <p className="font-black text-slate-900 uppercase italic text-lg">{prod.name}</p>
+              <div className="flex justify-between items-center mt-6">
+                <span className="font-black text-2xl text-slate-900 italic">R$ {prod.price}</span>
+                <button 
+                  onClick={() => handleCompra(prod)}
+                  className="bg-slate-900 text-white p-4 rounded-2xl hover:bg-blue-600 transition-all active:scale-95 shadow-lg"
+                >
+                  <ShoppingBag size={20} />
+                </button>
               </div>
             </div>
           ))}
         </div>
-      </div>
+      )}
     </div>
   )
 }
