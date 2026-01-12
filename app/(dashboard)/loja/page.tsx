@@ -34,17 +34,21 @@ export default function LojaPage() {
 
   const fetchData = async () => {
     try {
-     const [categoriesRes, ProdctRes] = await Promise.all([
-      // 1. Busca as Categorias de PRODUTOS (não de cursos)
+     const [categoriesRes, coursesRes] = await Promise.all([
+      // 1. CORREÇÃO: Buscar categorias de PRODUTO (ProductCategory)
       supabase.from('ProductCategory').select('*'),
-      
-      // 2. Busca os Produtos e conecta com a categoria certa
+
+      // 2. CORREÇÃO: Buscar Produto e conectar com ProductCategory
       supabase.from('Product').select(`
         *,
         ProductCategory (
           id,
           name,
           slug
+        )
+      `)
+      .eq('isPublished', true)
+    ])
         )
       `)
       .eq('isPublished', true)
@@ -124,10 +128,10 @@ export default function LojaPage() {
             {filteredCourses.map((course) => (
               <CourseCard 
                 key={course.id} 
-                course={course} 
+                course={course as any} 
                 showPrice={true}
                 actionLabel="Comprar"
-                actionHref={`/academy/courses/${course.id}`}
+                actionHref={\/loja/${course.slug}`}
               />
             ))}
           </div>
