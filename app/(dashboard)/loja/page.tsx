@@ -3,95 +3,133 @@
 import { useEffect, useState } from "react"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, ShoppingBag, Loader2, Package } from "lucide-react"
+import { 
+  ShoppingBag, Loader2, Package, Search, Filter, Zap, ArrowRight, CheckCircle 
+} from "lucide-react"
 import XPBar from "@/components/xp-bar"
+import { toast, Toaster } from "react-hot-toast"
 
 export default function LojaPage() {
   const supabase = createClientComponentClient()
   const router = useRouter()
-  const [authorized, setAuthorized] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [perfil, setPerfil] = useState<any>(null)
+  const [comprando, setComprando] = useState<string | null>(null)
 
-  // 1. Trava de Segurança: Só entra se estiver logado (Corrigido para getUser)
   useEffect(() => {
-    const checkUser = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        
-        if (!user) {
-          router.push('/login') 
-        } else {
-          setAuthorized(true)
-        }
-      } catch (error) {
-        console.error("Erro na autenticação:", error)
+    const fetchData = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
         router.push('/login')
-      } finally {
-        setLoading(false)
+        return
       }
+      
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+      
+      setPerfil(data)
+      setLoading(false)
     }
-    checkUser()
+    fetchData()
   }, [supabase, router])
 
-  if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-white">
-        <Loader2 className="animate-spin text-blue-600" size={40} />
-      </div>
-    )
+  // FUNÇÃO MÁGICA: ADICIONAR XP AO COMPRAR
+  const handleCompra = async (produtoNome: string, xpGanho: number) => {
+    setComprando(produtoNome)
+    
+    try {
+      const novoXP = (perfil?.xp || 0) + xpGanho
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update({ xp: novoXP })
+        .eq('id', perfil.id)
+
+      if (error) throw error
+
+      // Atualiza o estado local para a UI reagir na hora
+      setPerfil({ ...perfil, xp: novoXP })
+      
+      toast.success(`Compra realizada! +${xpGanho} XP adicionados!`, {
+        icon: '🚀',
+        style: { borderRadius: '16px', background: '#0f172a', color: '#fff', fontWeight: 'bold' }
+      })
+
+    } catch (error) {
+      toast.error("Erro ao processar compra.")
+    } finally {
+      setComprando(null)
+    }
   }
 
-  if (!authorized) return null
+  const produtos = [
+    { id: '1', nome: "Kit Progressiva Masc PRO", preco: "189,90", xp: 500, tag: "Mais Vendido" },
+    { id: '2', nome: "Sérum Finalizador Platinum", preco: "89,00", xp: 250, tag: "Destaque" },
+    { id: '3', nome: "Máscara de Reconstrução", preco: "120,00", xp: 350, tag: "Novo" },
+    { id: '4', nome: "Curso Técnicas de Corte", preco: "497,00", xp: 2000, tag: "Academy" },
+  ]
+
+  if (loading) return (
+    <div className="flex h-screen items-center justify-center bg-white">
+      <Loader2 className="animate-spin text-blue-600" size={40} />
+    </div>
+  )
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-10 space-y-6">
+    <div className="min-h-screen bg-slate-50 p-4 md:p-10 space-y-8">
+      <Toaster position="top-center" />
       
-      <div className="flex flex-col gap-6 max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto space-y-8">
         
-        {/* CABEÇALHO COM BOTÃO VOLTAR SEGURO */}
-        <div className="flex items-center justify-between">
-          <button 
-            onClick={() => router.back()} 
-            className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-all font-bold group"
-          >
-            <div className="p-2 bg-white rounded-full border shadow-sm group-hover:shadow-md transition-shadow">
-              <ArrowLeft size={20} />
+        {/* HEADER */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-blue-600 font-black text-[10px] uppercase tracking-[0.3em] mb-2">
+              <Zap size={14} className="fill-blue-600" /> Mercado Masc PRO
             </div>
-            <span>Voltar</span>
-          </button>
-
-          <div className="flex items-center gap-2 bg-white px-5 py-2 rounded-full border border-slate-100 shadow-sm">
-            <ShoppingBag size={18} className="text-blue-600" />
-            <span className="font-black text-slate-800 uppercase text-[10px] tracking-[0.2em]">Masc PRO Shop</span>
+            <h1 className="text-5xl font-black text-slate-900 italic uppercase tracking-tighter leading-none">
+              Shop <span className="text-slate-300">Exclusivo</span>
+            </h1>
           </div>
         </div>
 
-        {/* BARRA DE XP - IMPORTANTE PARA O EMBAIXADOR VER O STATUS NA LOJA */}
+        {/* BARRA DE XP DINÂMICA */}
         <XPBar />
 
-        {/* ÁREA DE PRODUTOS */}
-        <div className="pt-6">
-           <div className="mb-10">
-              <h1 className="text-4xl font-black text-slate-900 italic uppercase leading-none">Vitrine PRO</h1>
-              <div className="h-1.5 w-24 bg-blue-600 mt-3 rounded-full"></div>
-           </div>
-           
-           {/* GRID DE PRODUTOS (Placeholder enquanto conecta Nuvemshop) */}
-           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              
-              <div className="bg-white p-10 rounded-[40px] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-center gap-4 group hover:border-blue-400 transition-colors">
-                 <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 group-hover:text-blue-500 transition-colors">
-                    <Package size={40} />
-                 </div>
-                 <div>
-                    <p className="text-slate-900 font-black uppercase text-sm">Sincronizando Loja...</p>
-                    <p className="text-slate-400 text-xs font-medium mt-1">Seus produtos da Nuvemshop aparecerão aqui em instantes.</p>
-                 </div>
+        {/* VITRINE */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {produtos.map((p) => (
+            <div key={p.id} className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm hover:shadow-xl transition-all group">
+              <div className="aspect-square bg-slate-50 rounded-2xl mb-6 flex items-center justify-center relative overflow-hidden">
+                <Package size={48} className="text-slate-200 group-hover:scale-110 transition-transform duration-500" />
+                <div className="absolute top-3 right-3 bg-blue-600 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase italic">
+                  +{p.xp} XP
+                </div>
               </div>
-
-           </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">{p.tag}</p>
+                  <h4 className="text-lg font-black text-slate-900 leading-tight uppercase italic">{p.nome}</h4>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <span className="text-2xl font-black text-slate-900 italic">R$ {p.preco}</span>
+                  <button 
+                    onClick={() => handleCompra(p.nome, p.xp)}
+                    disabled={comprando === p.nome}
+                    className="p-3 bg-slate-900 text-white rounded-xl hover:bg-blue-600 transition-all active:scale-90 disabled:opacity-50"
+                  >
+                    {comprando === p.nome ? <Loader2 className="animate-spin" size={20} /> : <ShoppingBag size={20} />}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
-
       </div>
     </div>
   )
