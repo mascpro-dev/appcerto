@@ -1,111 +1,77 @@
 "use client"
 
-import { useRouter, useParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
-import { ArrowLeft, ShoppingCart, ShieldCheck, Zap, Package } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { ArrowLeft, ShoppingBag, Loader2 } from "lucide-react"
+import XPBar from "@/components/xp-bar"
 
-export default function DetalheProdutoPage() {
-  const router = useRouter()
-  const { id } = useParams()
-  const [produto, setProduto] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
+export default function LojaPage() {
   const supabase = createClientComponentClient()
+  const router = useRouter()
+  const [authorized, setAuthorized] = useState(false)
 
+  // 1. Trava de Segurança: Só entra se estiver logado
   useEffect(() => {
-    const fetchProduto = async () => {
-      // Aqui o código já está pronto para receber as colunas 'description' e 'stock'
-      const { data } = await supabase
-        .from('Product')
-        .select('*')
-        .eq('id', id)
-        .single()
-      
-      if (data) setProduto(data)
-      setLoading(false)
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        router.push('/login') 
+      } else {
+        setAuthorized(true)
+      }
     }
-    fetchProduto()
-  }, [id])
+    checkUser()
+  }, [supabase, router])
 
-  if (loading) return <div className="p-10 text-center animate-pulse">Carregando detalhes...</div>
-  if (!produto) return <div className="p-10 text-center">Produto não encontrado.</div>
-
-  const temEstoque = produto.stock > 0
+  if (!authorized) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-white">
+        <Loader2 className="animate-spin text-blue-600" size={40} />
+      </div>
+    )
+  }
 
   return (
-    <div className="p-6 md:p-10 max-w-6xl mx-auto space-y-8">
+    <div className="min-h-screen bg-slate-50 p-4 md:p-8 space-y-6">
       
-      {/* CABEÇALHO COM VOLTAR */}
-      <button 
-        onClick={() => router.back()} 
-        className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-all font-bold group"
-      >
-        <div className="p-2 bg-white rounded-full border shadow-sm group-hover:bg-slate-50">
-          <ArrowLeft size={20} />
-        </div>
-        Voltar para a Loja
-      </button>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-16">
+      {/* CABEÇALHO DA LOJA */}
+      <div className="flex flex-col gap-6 max-w-7xl mx-auto">
         
-        {/* IMAGEM DO PRODUTO */}
-        <div className="bg-white rounded-[40px] p-8 md:p-12 border border-slate-100 shadow-sm flex items-center justify-center relative overflow-hidden">
-          <img 
-            src={produto.image_url || "https://placehold.co/600x600?text=Produto"} 
-            className="w-full h-auto object-contain hover:scale-105 transition duration-700"
-          />
-          {!temEstoque && (
-            <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] flex items-center justify-center">
-              <span className="bg-slate-900 text-white px-6 py-2 rounded-full font-black uppercase tracking-tighter">Esgotado</span>
-            </div>
-          )}
-        </div>
-
-        {/* INFORMAÇÕES E COMPRA */}
-        <div className="flex flex-col justify-center">
-          <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest mb-4">
-            <Zap size={12} className="fill-blue-600" />
-            Ganhe +{Math.floor(produto.price / 2)} XP nesta compra
-          </div>
-          
-          <h1 className="text-4xl font-black text-slate-900 mb-2 leading-tight">{produto.title}</h1>
-          
-          <div className="flex items-center gap-4 mb-6">
-            <span className="text-3xl font-black text-blue-600">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(produto.price)}
-            </span>
-            <div className="flex items-center gap-1 text-slate-400 text-sm font-bold border-l pl-4">
-              <Package size={16} />
-              {temEstoque ? `${produto.stock} em estoque` : "Sem estoque"}
-            </div>
-          </div>
-
-          <div className="bg-slate-50 rounded-2xl p-6 mb-8 border border-slate-100">
-            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-3">Descrição do Produto</h3>
-            <p className="text-slate-600 leading-relaxed">
-              {produto.description || "Descrição detalhada vinda diretamente da sua loja Nuvemshop. Este produto profissional é ideal para manter a performance e o estilo Masc PRO."}
-            </p>
-          </div>
-
+        <div className="flex items-center justify-between">
           <button 
-            disabled={!temEstoque}
-            className={`w-full py-5 rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all shadow-xl shadow-blue-100
-              ${temEstoque 
-                ? "bg-slate-900 text-white hover:bg-blue-600" 
-                : "bg-slate-200 text-slate-400 cursor-not-allowed"}
-            `}
+            onClick={() => router.back()} // VOLTAR SEGURO: Não desloga
+            className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-all font-bold group"
           >
-            <ShoppingCart size={24} />
-            {temEstoque ? "COMPRAR AGORA" : "AVISE-ME QUANDO CHEGAR"}
+            <div className="p-2 bg-white rounded-full border shadow-sm group-hover:shadow-md">
+              <ArrowLeft size={20} />
+            </div>
+            Voltar
           </button>
 
-          <div className="flex items-center gap-6 mt-8">
-            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-              <ShieldCheck size={16} className="text-green-500" />
-              Pagamento Seguro
-            </div>
+          <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full border shadow-sm">
+            <ShoppingBag size={18} className="text-blue-600" />
+            <span className="font-black text-slate-800 uppercase text-xs tracking-widest">Loja Masc PRO</span>
           </div>
         </div>
+
+        {/* BARRA DE XP NO TOPO DA LOJA */}
+        <XPBar />
+
+        {/* LISTA DE PRODUTOS */}
+        <div className="mt-8">
+           <h1 className="text-3xl font-black text-slate-900 mb-2 italic">PRODUTOS EXCLUSIVOS</h1>
+           <p className="text-slate-500 font-medium mb-8">Compre e acumule XP conforme seu cargo.</p>
+           
+           {/* ONDE OS PRODUTOS DA NUVEMSHOP SERÃO LISTADOS */}
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Seus componentes de produto entram aqui */}
+              <div className="bg-white p-8 rounded-[40px] border border-dashed border-slate-300 text-center">
+                 <p className="text-slate-400 font-bold uppercase text-xs">Sincronizando com Nuvemshop...</p>
+              </div>
+           </div>
+        </div>
+
       </div>
     </div>
   )
