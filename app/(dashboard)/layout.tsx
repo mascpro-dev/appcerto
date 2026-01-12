@@ -1,95 +1,142 @@
 "use client"
 
-import { useState } from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { Menu, X, LayoutDashboard, ShoppingBag, Calendar, GraduationCap, LogOut } from "lucide-react"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { 
+  ArrowLeft, 
+  LayoutDashboard, 
+  ShoppingBag, 
+  GraduationCap, 
+  Users, 
+  Settings,
+  LogOut,
+  Loader2
+} from "lucide-react"
+import XPBar from "@/components/xp-bar"
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const pathname = usePathname()
+export default function DashboardPage() {
   const router = useRouter()
   const supabase = createClientComponentClient()
+  const [loading, setLoading] = useState(true)
+  const [userName, setUserName] = useState("")
 
-  const handleSignOut = async () => {
+  // 1. Verificação de Sessão (Proteção)
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        router.push('/login')
+      } else {
+        setUserName(session.user.email?.split('@')[0] || "Membro")
+        setAuthorized(true)
+      }
+      setLoading(false)
+    }
+    checkSession()
+  }, [router, supabase])
+
+  const [authorized, setAuthorized] = useState(false)
+
+  // Função para Sair (Apenas quando clicar no botão de Sair)
+  const handleLogout = async () => {
     await supabase.auth.signOut()
-    router.push("/login")
+    router.push('/login')
   }
 
-  // Substitua a lista navItems por esta:
-const navItems = [
-  { href: "/", label: "Meu Nível", icon: LayoutDashboard }, // Este é o link para a Home
-  { href: "/academy", label: "Academy", icon: GraduationCap },
-  { href: "/agenda", label: "Agenda", icon: Calendar },
-  { href: "/loja", label: "Loja", icon: ShoppingBag },
-]
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-white">
+        <Loader2 className="animate-spin text-blue-600" size={40} />
+      </div>
+    )
+  }
+
+  if (!authorized) return null
 
   return (
-    <div className="min-h-screen bg-[#0f172a] flex flex-col md:flex-row font-sans">
-      
-      {/* MENU MOBILE - FIXO NO TOPO */}
-      <div className="md:hidden bg-slate-900/95 backdrop-blur-md text-white p-4 flex justify-between items-center fixed top-0 w-full z-[100] border-b border-white/10">
-        <span className="font-bold text-xl tracking-tighter italic">MASC<span className="text-blue-500">PRO</span></span>
-        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 hover:bg-white/10 rounded-lg">
-          {isMobileMenuOpen ? <X /> : <Menu />}
-        </button>
-      </div>
-
-      {/* SIDEBAR - GAVETA NO CELULAR */}
-      <aside className={`
-        fixed inset-y-0 left-0 z-[90] w-72 bg-slate-900 text-slate-300 transform transition-transform duration-500 ease-in-out md:translate-x-0 md:static md:h-screen
-        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <div className="p-8 h-full flex flex-col border-r border-white/5">
-          <div className="mb-12 md:block hidden">
-            <h1 className="text-2xl font-black italic tracking-tighter text-white">MASC<span className="text-blue-500">PRO</span></h1>
-            <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-bold mt-1">Professional Education</p>
-          </div>
-
-          <nav className="space-y-1.5 flex-grow">
-            {navItems.map((item) => {
-              const isActive = pathname === item.href
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className={`flex items-center gap-4 px-4 py-4 rounded-xl text-sm font-bold transition-all duration-300
-                    ${isActive 
-                      ? "bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)]" 
-                      : "text-slate-400 hover:bg-white/5 hover:text-white"
-                    }`}
-                >
-                  <item.icon size={22} strokeWidth={isActive ? 2.5 : 2} />
-                  {item.label}
-                </Link>
-              )
-            })}
-          </nav>
+    <div className="min-h-screen bg-slate-50 p-4 md:p-8">
+      <div className="max-w-7xl mx-auto space-y-6">
+        
+        {/* CABEÇALHO / NAVBAR SUPERIOR */}
+        <div className="flex items-center justify-between mb-8">
+          {/* BOTÃO VOLTAR CORRIGIDO: router.back() garante que não deslogue */}
+          <button 
+            onClick={() => router.back()} 
+            className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-all font-bold group"
+          >
+            <div className="p-2 bg-white rounded-full border shadow-sm group-hover:shadow-md transition-shadow">
+              <ArrowLeft size={20} />
+            </div>
+            <span>Voltar</span>
+          </button>
 
           <button 
-            onClick={handleSignOut} 
-            className="flex items-center gap-4 px-4 py-4 text-sm font-bold text-slate-500 hover:text-red-400 transition-colors mt-auto border-t border-white/5"
+            onClick={handleLogout}
+            className="flex items-center gap-2 text-red-500 hover:text-red-700 font-bold text-sm bg-red-50 px-4 py-2 rounded-full transition-colors"
           >
-            <LogOut size={22} />
-            Sair da Conta
+            <LogOut size={18} />
+            Sair
           </button>
         </div>
-      </aside>
 
-      {/* CONTEÚDO PRINCIPAL - AJUSTE DE MARGEM (pt-20) */}
-      <main className="flex-1 pt-20 md:pt-0 h-screen overflow-y-auto bg-slate-50 rounded-t-[32px] md:rounded-t-none md:rounded-l-[32px] transition-all duration-500">
-        {/* Overlay para fechar menu mobile ao clicar fora */}
-        {isMobileMenuOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[80] md:hidden" onClick={() => setIsMobileMenuOpen(false)} />
-        )}
-        
-        <div className="min-h-full">
-            {children}
+        {/* BOAS VINDAS */}
+        <div className="space-y-1">
+          <p className="text-slate-500 font-bold uppercase text-[10px] tracking-[0.2em]">Bem-vindo de volta,</p>
+          <h1 className="text-4xl font-black text-slate-900 uppercase italic">Olá, {userName}!</h1>
         </div>
-      </main>
+
+        {/* COMPONENTE DE XP (BARRA DO EMBAIXADOR) */}
+        <XPBar />
+
+        {/* MENU DE NAVEGAÇÃO RÁPIDA (CARDS) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+          
+          {/* CARD LOJA */}
+          <button 
+            onClick={() => router.push('/loja')}
+            className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm hover:shadow-xl transition-all text-left group flex flex-col gap-4"
+          >
+            <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-200 group-hover:scale-110 transition-transform">
+              <ShoppingBag size={28} />
+            </div>
+            <div>
+              <h3 className="text-xl font-black text-slate-900">LOJA MASC PRO</h3>
+              <p className="text-slate-500 text-sm font-medium">Compre produtos e acumule XP.</p>
+            </div>
+          </button>
+
+          {/* CARD ACADEMY */}
+          <button 
+            onClick={() => router.push('/academy')}
+            className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm hover:shadow-xl transition-all text-left group flex flex-col gap-4"
+          >
+            <div className="w-14 h-14 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-slate-200 group-hover:scale-110 transition-transform">
+              <GraduationCap size={28} />
+            </div>
+            <div>
+              <h3 className="text-xl font-black text-slate-900">ACADEMY</h3>
+              <p className="text-slate-500 text-sm font-medium">Assista aulas e suba de nível.</p>
+            </div>
+          </button>
+
+          {/* CARD COMUNIDADE/RANKING */}
+          <button 
+            onClick={() => router.push('/ranking')}
+            className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm hover:shadow-xl transition-all text-left group flex flex-col gap-4"
+          >
+            <div className="w-14 h-14 bg-amber-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-amber-200 group-hover:scale-110 transition-transform">
+              <Users size={28} />
+            </div>
+            <div>
+              <h3 className="text-xl font-black text-slate-900">RANKING</h3>
+              <p className="text-slate-500 text-sm font-medium">Veja quem são os líderes PRO.</p>
+            </div>
+          </button>
+
+        </div>
+
+      </div>
     </div>
   )
 }
