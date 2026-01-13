@@ -6,24 +6,38 @@ export async function middleware(req: NextRequest) {
   const res = NextResponse.next()
   const supabase = createMiddlewareClient({ req, res })
 
-  // Verifica se existe uma sessão ativa
+  // 🛡️ Forma ultra-compatível de pegar a sessão
   const { data: { session } } = await supabase.auth.getSession()
 
-  // Se o usuário NÃO estiver logado e tentar entrar no dashboard (página inicial, agenda, etc)
-  // redireciona ele para a página de login
-  if (!session && req.nextUrl.pathname !== '/login') {
-    return NextResponse.redirect(new URL('/login', req.url))
+  const isLoginPage = req.nextUrl.pathname === '/login'
+
+  // 1. Se NÃO está logado e tenta entrar no App -> Manda para o Login
+  if (!session && !isLoginPage) {
+    const redirectUrl = req.nextUrl.clone()
+    redirectUrl.pathname = '/login'
+    redirectUrl.searchParams.set('redirectedFrom', req.nextUrl.pathname)
+    return NextResponse.redirect(redirectUrl)
   }
 
-  // Se o usuário JÁ estiver logado e tentar ir para o login, manda ele para a home
-  if (session && req.nextUrl.pathname === '/login') {
-    return NextResponse.redirect(new URL('/', req.url))
+  // 2. Se JÁ está logado e tenta entrar no Login -> Manda para a Home
+  if (session && isLoginPage) {
+    const redirectUrl = req.nextUrl.clone()
+    redirectUrl.pathname = '/'
+    return NextResponse.redirect(redirectUrl)
   }
 
   return res
 }
 
-// Configura quais páginas o middleware deve vigiar
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+  matcher: [
+    /*
+     * Vigia todas as rotas exceto:
+     * - api (rotas de dados)
+     * - _next/static (arquivos do sistema)
+     * - _next/image (imagens otimizadas)
+     * - favicon.ico e imagens públicas (png, jpg, etc)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.png$).*)',
+  ],
 }
