@@ -4,15 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
-  LayoutDashboard, 
-  GraduationCap, 
-  Users, 
-  ShoppingBag, 
-  Calendar, 
-  User, 
-  LogOut, 
-  Menu, 
-  X 
+  LayoutDashboard, GraduationCap, Users, ShoppingBag, 
+  Calendar, User, LogOut, Menu, X, Crown
 } from "lucide-react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useRouter } from "next/navigation";
@@ -43,20 +36,18 @@ export default function MainLayout({
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 flex font-sans">
+    <div className="min-h-screen bg-black flex font-sans selection:bg-masc-gold selection:text-black">
       {/* --- SIDEBAR DESKTOP --- */}
-      <aside className="hidden md:flex w-72 flex-col border-r border-slate-800 bg-slate-950 p-6 fixed h-full z-10">
-        {/* Logo */}
+      <aside className="hidden md:flex w-72 flex-col border-r border-white/10 bg-black p-6 fixed h-full z-10">
         <div className="mb-10 pl-2">
-          <h1 className="text-2xl font-black italic tracking-tighter text-white">
-            MASC<span className="text-blue-600">PRO</span>
+          <h1 className="text-2xl font-black italic tracking-tighter text-white flex items-center gap-1">
+            MASC<span className="text-masc-blue">PRO</span> <Crown size={16} className="text-masc-gold mb-1" />
           </h1>
           <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-bold mt-1">
-            Professional Education
+            Hub Educacional
           </p>
         </div>
 
-        {/* Navegação */}
         <nav className="flex-1 space-y-2">
           {navItems.map((item) => {
             const isActive = pathname.startsWith(item.href);
@@ -64,68 +55,61 @@ export default function MainLayout({
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group relative overflow-hidden ${
                   isActive
-                    ? "bg-blue-600/10 text-blue-400 border border-blue-600/20"
+                    ? "bg-white/5 text-white border border-white/10 shadow-lg"
                     : "text-slate-400 hover:text-white hover:bg-white/5"
                 }`}
               >
+                {/* Indicador Dourado se Ativo */}
+                {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-masc-gold"></div>}
+                
                 <item.icon
                   size={20}
-                  className={isActive ? "text-blue-400" : "text-slate-500 group-hover:text-white"}
+                  className={isActive ? "text-masc-gold" : "text-slate-500 group-hover:text-white transition-colors"}
                 />
-                <span className="font-medium text-sm">{item.label}</span>
+                <span className={`font-medium text-sm ${isActive ? "font-bold tracking-wide" : ""}`}>
+                    {item.label}
+                </span>
               </Link>
             );
           })}
         </nav>
 
-        {/* Botão Sair */}
-        <div className="pt-6 border-t border-slate-800">
+        <div className="pt-6 border-t border-white/10">
           <button
             onClick={handleSignOut}
-            className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+            className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-slate-500 hover:text-masc-wine hover:bg-masc-wine/10 transition-colors"
           >
             <LogOut size={20} />
-            <span className="font-medium text-sm">Sair da Conta</span>
+            <span className="font-medium text-sm">Sair</span>
           </button>
         </div>
       </aside>
 
-      {/* --- MENU MOBILE (Topo) --- */}
-      <div className="md:hidden fixed top-0 w-full z-50 bg-slate-950/80 backdrop-blur-md border-b border-slate-800 p-4 flex justify-between items-center">
-        <span className="font-black italic text-lg text-white">
-            MASC<span className="text-blue-600">PRO</span>
-        </span>
-        <button 
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="text-white p-2"
-        >
+      {/* --- MENU MOBILE --- */}
+      <div className="md:hidden fixed top-0 w-full z-50 bg-black/90 backdrop-blur-md border-b border-white/10 p-4 flex justify-between items-center">
+        <span className="font-black italic text-lg text-white">MASC<span className="text-masc-blue">PRO</span></span>
+        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-white p-2">
             {isMobileMenuOpen ? <X /> : <Menu />}
         </button>
       </div>
 
-      {/* --- MENU MOBILE (Lista Aberta) --- */}
       {isMobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 top-16 z-40 bg-slate-950 p-6 space-y-4">
+        <div className="md:hidden fixed inset-0 top-16 z-40 bg-black p-6 space-y-4">
              {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="flex items-center gap-4 px-4 py-4 rounded-xl bg-slate-900 text-slate-200 border border-slate-800"
+                className={`flex items-center gap-4 px-4 py-4 rounded-xl border ${
+                    pathname.startsWith(item.href) ? "bg-white/10 border-masc-gold text-white" : "bg-white/5 border-white/5 text-slate-400"
+                }`}
               >
-                <item.icon size={24} />
+                <item.icon size={24} className={pathname.startsWith(item.href) ? "text-masc-gold" : ""} />
                 <span className="font-bold text-lg">{item.label}</span>
               </Link>
             ))}
-             <button
-                onClick={handleSignOut}
-                className="flex items-center gap-4 px-4 py-4 w-full rounded-xl text-red-400 bg-red-950/20 mt-8"
-              >
-                <LogOut size={24} />
-                <span className="font-bold text-lg">Sair</span>
-              </button>
         </div>
       )}
 
