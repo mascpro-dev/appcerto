@@ -1,3 +1,6 @@
+// --- A LINHA MÁGICA ESTÁ AQUI EMBAIXO ---
+export const dynamic = "force-dynamic";
+
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import { Trophy, Star, ArrowUpRight, Shield, TrendingUp } from "lucide-react";
