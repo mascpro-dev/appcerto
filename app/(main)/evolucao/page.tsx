@@ -15,38 +15,39 @@ export default async function EvolucaoPage() {
   const featuredModule = modules?.[0];
 
   return (
+    // Note que mantivemos o fundo e o padding inferior
     <div className="pb-24 bg-slate-950 min-h-screen font-sans">
       
       {/* --- 1. HERO SECTION (Destaque) --- */}
       {featuredModule && (
-        // AJUSTE: Reduzimos a altura do hero para ficar mais compacto.
-        <div className="relative w-full h-[45vh] md:h-[55vh] flex items-end justify-center">
+        <div className="relative w-full h-[50vh] md:h-[60vh] flex items-end justify-center">
+          {/* Fundo e Efeitos */}
           <div className="absolute inset-0 bg-gradient-to-br from-masc-purple/80 via-slate-900/90 to-black opacity-90" />
           <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-10 mix-blend-overlay" />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent" />
 
-          {/* AJUSTE: Reduzimos o padding (p-6 md:p-12) e centralizamos o conteúdo (items-center text-center). */}
           <div className="relative z-10 p-6 md:p-12 w-full max-w-4xl mx-auto flex flex-col items-center text-center">
-            <span className="bg-masc-gold/20 text-masc-gold border border-masc-gold/30 px-3 py-1 rounded-md text-[10px] font-bold tracking-widest uppercase mb-3 inline-block backdrop-blur-md">
+            <span className="bg-[#C9A66B]/20 text-[#C9A66B] border border-[#C9A66B]/30 px-3 py-1 rounded-md text-[10px] font-bold tracking-widest uppercase mb-3 inline-block backdrop-blur-md">
               Módulo Destaque
             </span>
-            {/* AJUSTE CRÍTICO: Reduzimos drasticamente o tamanho do título pela metade (text-2xl md:text-4xl). */}
-            <h1 className="text-2xl md:text-4xl font-black text-white mb-3 leading-tight tracking-tighter drop-shadow-2xl max-w-2xl">
+            
+            <h1 className="text-3xl md:text-5xl font-black text-white mb-3 leading-tight tracking-tighter drop-shadow-2xl max-w-3xl">
               {featuredModule.title}
             </h1>
-            <p className="text-slate-300 text-sm md:text-base mb-6 max-w-xl line-clamp-2 drop-shadow-md font-medium">
+            
+            <p className="text-slate-300 text-sm md:text-base mb-8 max-w-xl line-clamp-2 drop-shadow-md font-medium">
               Domine as técnicas fundamentais e comece a acumular seus primeiros pontos PRO.
               O conhecimento transforma sua carreira.
             </p>
 
-            {/* AJUSTE: Centralizamos os botões (justify-center) e diminuímos o tamanho do botão Detalhes. */}
-            <div className="flex flex-wrap gap-3 justify-center">
-              <button className="bg-masc-lime text-black hover:bg-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all transform hover:scale-105 shadow-lg shadow-masc-lime/20 text-sm">
+            <div className="flex flex-wrap gap-4 justify-center">
+              {/* --- CORREÇÃO AQUI: Cor HEX #A6CE44 Direta --- */}
+              <button className="bg-[#A6CE44] hover:bg-[#95b93d] text-black px-8 py-3 rounded-xl font-bold flex items-center gap-2 transition-all transform hover:scale-105 shadow-[0_0_20px_rgba(166,206,68,0.3)] text-sm uppercase tracking-wide">
                 <Play fill="currentColor" size={18} />
                 Assistir Agora
               </button>
-              {/* AJUSTE: Botão Detalhes menor (px-5 py-2.5 text-sm). */}
-              <button className="bg-white/10 backdrop-blur-md text-white border border-white/20 hover:bg-white/20 px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all hover:border-white/40 text-sm">
+
+              <button className="bg-white/10 backdrop-blur-md text-white border border-white/20 hover:bg-white/20 px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all hover:border-white/40 text-sm uppercase tracking-wide">
                 <Info size={18} />
                 Detalhes
               </button>
@@ -56,26 +57,25 @@ export default async function EvolucaoPage() {
       )}
 
       {/* --- Wrapper para as Trilhas de Conteúdo --- */}
-      <div className="space-y-12 relative z-20 px-6 md:px-12 -mt-8 max-w-7xl mx-auto">
+      <div className="space-y-12 relative z-20 px-6 md:px-12 -mt-4 max-w-7xl mx-auto">
         
         {/* --- 2. TRILHA: Continuar Assistindo --- */}
         <section>
           <h2 className="text-white font-bold text-xl mb-4 flex items-center gap-2">
-            Continuar Aprendendo <ChevronRight className="text-masc-gold" size={20} />
+            Continuar Aprendendo <ChevronRight className="text-[#C9A66B]" size={20} />
           </h2>
           <div className="flex gap-5 overflow-x-auto pb-4 scrollbar-hide snap-x px-1">
-             {/* Card de Exemplo */}
              <div className="min-w-[260px] md:min-w-[300px] bg-slate-900/50 rounded-xl overflow-hidden border border-white/10 snap-start cursor-pointer hover:border-masc-blue/50 transition-all group hover:shadow-md hover:shadow-masc-blue/10 hover:-translate-y-1">
                 <div className="h-36 md:h-40 bg-slate-800/50 relative group-hover:bg-slate-800/80 transition-colors flex items-center justify-center">
                     <Play size={40} className="text-white/70 group-hover:text-white group-hover:scale-110 transition-all drop-shadow-lg" />
                     <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-700/50">
-                        <div className="h-full bg-gradient-to-r from-masc-gold to-amber-300 w-[45%] shadow-[0_0_10px_rgba(201,166,107,0.5)]" />
+                        <div className="h-full bg-gradient-to-r from-[#C9A66B] to-amber-300 w-[45%] shadow-[0_0_10px_rgba(201,166,107,0.5)]" />
                     </div>
                 </div>
                 <div className="p-4">
                     <h3 className="text-slate-100 font-bold text-base truncate leading-tight">Aula 2: Colorimetria Avançada</h3>
-                    <p className="text-[10px] text-masc-gold font-medium mt-1.5 flex items-center gap-1">
-                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-masc-gold animate-pulse"/>
+                    <p className="text-[10px] text-[#C9A66B] font-medium mt-1.5 flex items-center gap-1">
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#C9A66B] animate-pulse"/>
                       Restam 15 min
                     </p>
                 </div>
@@ -90,9 +90,8 @@ export default async function EvolucaoPage() {
             {modules?.map((modulo: any, index: number) => (
               <div 
                 key={modulo.id} 
-                className="group bg-slate-900/30 hover:bg-slate-900/80 border border-white/5 hover:border-masc-lime/30 rounded-xl overflow-hidden transition-all hover:-translate-y-1 duration-300 hover:shadow-xl hover:shadow-masc-lime/5"
+                className="group bg-slate-900/30 hover:bg-slate-900/80 border border-white/5 hover:border-[#A6CE44]/30 rounded-xl overflow-hidden transition-all hover:-translate-y-1 duration-300 hover:shadow-xl hover:shadow-[#A6CE44]/5"
               >
-                {/* Thumbnail */}
                 <div className={`h-36 w-full relative p-4 flex flex-col justify-end items-start
                     ${index % 2 === 0 ? 'bg-gradient-to-t from-masc-teal/90 via-masc-teal/50 to-slate-900/20' : 'bg-gradient-to-t from-masc-purple/90 via-masc-purple/50 to-slate-900/20'}
                 `}>
@@ -104,21 +103,17 @@ export default async function EvolucaoPage() {
                     </div>
                 </div>
                 
-                {/* AJUSTE CRÍTICO: Reduzimos o padding interno (p-4) e o tamanho das fontes para evitar corte. */}
                 <div className="p-4">
-                  {/* Título menor (text-base) */}
-                  <h3 className="text-white font-bold text-base leading-snug group-hover:text-masc-lime transition-colors line-clamp-2">
+                  <h3 className="text-white font-bold text-base leading-snug group-hover:text-[#A6CE44] transition-colors line-clamp-2">
                     {modulo.title}
                   </h3>
                   
                   <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/5">
-                    {/* Texto do rodapé menor (text-[10px]) */}
                     <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-medium">
-                        <div className="w-1.5 h-1.5 rounded-full bg-masc-lime animate-pulse shadow-[0_0_8px_rgba(166,206,68,0.6)]" />
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#A6CE44] animate-pulse shadow-[0_0_8px_rgba(166,206,68,0.6)]" />
                         <span className="uppercase tracking-wider">Fundamental</span>
                     </div>
-                    {/* Badge menor */}
-                    <div className="flex items-center gap-1 text-[10px] font-bold text-masc-gold bg-masc-gold/10 px-2 py-1 rounded-md border border-masc-gold/20 transition-all group-hover:bg-masc-gold/20 group-hover:border-masc-gold/40">
+                    <div className="flex items-center gap-1 text-[10px] font-bold text-[#C9A66B] bg-[#C9A66B]/10 px-2 py-1 rounded-md border border-[#C9A66B]/20 transition-all group-hover:bg-[#C9A66B]/20 group-hover:border-[#C9A66B]/40">
                         <Zap size={10} fill="currentColor" /> +50 PRO
                     </div>
                   </div>

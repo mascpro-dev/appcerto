@@ -35,6 +35,9 @@ export default function MainLayout({
     { href: "/perfil", label: "Meu Perfil", icon: User },
   ];
 
+  // Verifica se estamos na página "tipo Netflix" para remover as margens
+  const isImmersivePage = pathname === '/evolucao';
+
   return (
     <div className="min-h-screen bg-black flex font-sans selection:bg-masc-gold selection:text-black">
       {/* --- SIDEBAR DESKTOP --- */}
@@ -61,9 +64,7 @@ export default function MainLayout({
                     : "text-slate-400 hover:text-white hover:bg-white/5"
                 }`}
               >
-                {/* Indicador Dourado se Ativo */}
                 {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-masc-gold"></div>}
-                
                 <item.icon
                   size={20}
                   className={isActive ? "text-masc-gold" : "text-slate-500 group-hover:text-white transition-colors"}
@@ -87,8 +88,9 @@ export default function MainLayout({
         </div>
       </aside>
 
-      {/* --- MENU MOBILE --- */}
-      <div className="md:hidden fixed top-0 w-full z-50 bg-black/90 backdrop-blur-md border-b border-white/10 p-4 flex justify-between items-center">
+      {/* --- MENU MOBILE (Topo Fixo) --- */}
+      {/* Adicionamos bg-black/50 e backdrop-blur para ele ser semi-transparente sobre o banner */}
+      <div className="md:hidden fixed top-0 w-full z-50 bg-black/60 backdrop-blur-md border-b border-white/5 p-4 flex justify-between items-center transition-all">
         <span className="font-black italic text-lg text-white">MASC<span className="text-masc-blue">PRO</span></span>
         <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-white p-2">
             {isMobileMenuOpen ? <X /> : <Menu />}
@@ -96,7 +98,7 @@ export default function MainLayout({
       </div>
 
       {isMobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 top-16 z-40 bg-black p-6 space-y-4">
+        <div className="md:hidden fixed inset-0 top-16 z-40 bg-black p-6 space-y-4 animate-in slide-in-from-right">
              {navItems.map((item) => (
               <Link
                 key={item.href}
@@ -115,7 +117,8 @@ export default function MainLayout({
 
       {/* --- CONTEÚDO PRINCIPAL --- */}
       <main className="flex-1 md:ml-72 min-h-screen bg-black">
-        <div className="p-6 pt-24 md:p-10 md:pt-10 max-w-7xl mx-auto">
+        {/* AQUI ESTÁ A MÁGICA: Se for Evolução, removemos o padding (p-0). Se não, mantemos o padrão. */}
+        <div className={isImmersivePage ? "p-0 w-full" : "p-6 pt-24 md:p-10 md:pt-10 max-w-7xl mx-auto"}>
             {children}
         </div>
       </main>
