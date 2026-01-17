@@ -1,110 +1,92 @@
+export const dynamic = "force-dynamic";
+
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import Link from "next/link";
-import { 
-  LayoutDashboard, 
-  GraduationCap, 
-  Users, 
-  User, 
-  LogOut,
-  Menu
-} from "lucide-react";
-import LogoutButton from "../../componentes/LogoutButton";
+import { Trophy, TrendingUp, Users, Copy, Check } from "lucide-react";
+import ClientCopyButton from "./embaixador/ClientCopyButton"; // Reusando o botão
 
-export default async function MainLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default async function VisaoGeralPage() {
   const supabase = createServerComponentClient({ cookies });
-
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
+  
+  // 1. Pega usuário atual
+  const { data: { session } } = await supabase.auth.getSession();
+  
   if (!session) {
-    redirect("/login");
+      return <div className="p-8 text-white">Carregando...</div>
   }
 
+  // 2. Busca dados do perfil
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", session.user.id)
+    .single();
+
+  // 3. Gera o Link de Indicação (Pega o ID do usuário)
+  // IMPORTANTE: Ajuste a URL base para o seu domínio quando for pro ar
+  const inviteLink = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/cadastro?ref=${session.user.id}`;
+
   return (
-    <div className="flex min-h-screen bg-black text-white">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-20">
       
-      {/* --- 1. SIDEBAR (Só aparece no Computador/Desktop) --- */}
-      <aside className="w-64 border-r border-white/10 hidden md:flex flex-col fixed h-full bg-black z-50">
-        <div className="p-6">
-            <h1 className="text-2xl font-black text-white italic tracking-tighter">
-            MASC <span className="text-[#C9A66B]">PRO</span>
-            </h1>
-            <p className="text-slate-500 text-xs tracking-widest uppercase mt-1">Hub Educacional</p>
-        </div>
-
-        <nav className="flex-1 px-4 space-y-2 mt-4">
-            <Link href="/home" className="flex items-center gap-3 text-slate-400 hover:text-white hover:bg-white/5 px-4 py-3 rounded-xl transition-all font-bold text-sm">
-                <LayoutDashboard size={20} /> Visão Geral
-            </Link>
-            <Link href="/evolucao" className="flex items-center gap-3 text-slate-400 hover:text-white hover:bg-white/5 px-4 py-3 rounded-xl transition-all font-bold text-sm">
-                <GraduationCap size={20} /> Evolução
-            </Link>
-            <Link href="/comunidade" className="flex items-center gap-3 text-slate-400 hover:text-white hover:bg-white/5 px-4 py-3 rounded-xl transition-all font-bold text-sm">
-                <Users size={20} /> Comunidade
-            </Link>
-            <Link href="/embaixador" className="flex items-center gap-3 text-slate-400 hover:text-white hover:bg-white/5 px-4 py-3 rounded-xl transition-all font-bold text-sm">
-                <Menu size={20} /> Área Embaixador
-            </Link>
-            <Link href="/perfil" className="flex items-center gap-3 text-slate-400 hover:text-white hover:bg-white/5 px-4 py-3 rounded-xl transition-all font-bold text-sm">
-                <User size={20} /> Meu Perfil
-            </Link>
-        </nav>
-
-        <div className="p-4 border-t border-white/10">
-            <LogoutButton />
-        </div>
-      </aside>
-
-      {/* --- 2. BARRA DE NAVEGAÇÃO MOBILE (Só aparece no Celular) --- */}
-      <div className="md:hidden fixed bottom-0 left-0 w-full bg-slate-900/90 backdrop-blur-md border-t border-white/10 z-50 pb-safe">
-        <div className="flex justify-around items-center p-4">
-             <Link href="/home" className="flex flex-col items-center gap-1 text-slate-400 hover:text-[#C9A66B] transition-colors">
-                <LayoutDashboard size={20} />
-                <span className="text-[10px] font-bold">Início</span>
-             </Link>
-             <Link href="/evolucao" className="flex flex-col items-center gap-1 text-slate-400 hover:text-[#C9A66B] transition-colors">
-                <GraduationCap size={20} />
-                <span className="text-[10px] font-bold">Aulas</span>
-             </Link>
-             <div className="relative -top-5">
-                 <Link href="/perfil" className="flex flex-col items-center justify-center w-14 h-14 bg-[#C9A66B] rounded-full text-black shadow-[0_0_20px_rgba(201,166,107,0.4)] border-4 border-black">
-                    <User size={24} />
-                 </Link>
-             </div>
-             <Link href="/comunidade" className="flex flex-col items-center gap-1 text-slate-400 hover:text-[#C9A66B] transition-colors">
-                <Users size={20} />
-                <span className="text-[10px] font-bold">Rank</span>
-             </Link>
-             <Link href="/embaixador" className="flex flex-col items-center gap-1 text-slate-400 hover:text-[#C9A66B] transition-colors">
-                <Menu size={20} />
-                <span className="text-[10px] font-bold">Rede</span>
-             </Link>
+      {/* HEADER DE BOAS VINDAS */}
+      <div className="flex flex-col md:flex-row justify-between items-end gap-4 border-b border-white/10 pb-6">
+        <div>
+          <h1 className="text-3xl font-black text-white italic tracking-tighter">
+            VISÃO <span className="text-[#C9A66B]">GERAL</span>
+          </h1>
+          <p className="text-slate-400 mt-1">Bem-vindo de volta, {profile?.full_name?.split(' ')[0]}.</p>
         </div>
       </div>
 
-      {/* --- 3. CONTEÚDO PRINCIPAL (Ajustado para não ficar escondido) --- */}
-      <main className="flex-1 md:ml-64 p-4 md:p-8 pb-28 md:pb-8">
-        
-        {/* Topo Mobile (Para saber onde estamos) */}
-        <div className="md:hidden mb-6 flex justify-between items-center">
-            <div className="text-xl font-black text-white italic tracking-tighter">
-                MASC <span className="text-[#C9A66B]">PRO</span>
-            </div>
-            {/* Um botãozinho de sair discreto no mobile */}
-            <div className="w-8">
-               {/* Espaço reservado ou botão de config */}
-            </div>
-        </div>
+      {/* --- NOVIDADE: CARD DE INDICAÇÃO VIRAL --- */}
+      <div className="bg-gradient-to-r from-[#C9A66B] to-[#967d50] rounded-2xl p-1 relative overflow-hidden shadow-[0_0_30px_rgba(201,166,107,0.2)]">
+          <div className="bg-black rounded-xl p-6 relative overflow-hidden">
+              {/* Efeito de Fundo */}
+              <div className="absolute top-0 right-0 p-20 bg-[#C9A66B] opacity-10 blur-[80px] rounded-full pointer-events-none"></div>
 
-        {children}
-      </main>
+              <div className="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
+                  <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                          <Users className="text-[#C9A66B]" size={20} />
+                          <span className="text-[#C9A66B] font-bold text-xs uppercase tracking-widest border border-[#C9A66B]/30 px-2 py-1 rounded">
+                              Programa de Indicação
+                          </span>
+                      </div>
+                      <h3 className="text-2xl font-black text-white italic mb-2">
+                          CONSTRUA SEU EXÉRCITO <span className="text-[#C9A66B]">#MASCLOVERS</span>
+                      </h3>
+                      <p className="text-slate-400 text-sm leading-relaxed max-w-lg">
+                          Compartilhe seu link exclusivo. Cada profissional que entrar pelo seu link gera 
+                          <span className="text-white font-bold"> 10% de comissão em PROs</span> para você, para sempre.
+                      </p>
+                  </div>
+
+                  {/* Área do Link e Botão */}
+                  <div className="w-full md:w-auto flex flex-col gap-2">
+                      <div className="bg-slate-900 border border-white/10 rounded-lg p-3 text-center">
+                          <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">Seu Link Único</p>
+                          <code className="text-[#C9A66B] text-sm font-mono block mb-3 break-all">
+                              {inviteLink}
+                          </code>
+                          <ClientCopyButton text={inviteLink} />
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+      {/* ------------------------------------------- */}
+
+      {/* DASHBOARD EXISTENTE (Exemplo) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+         {/* Seus cards de saldo, ranking etc iriam aqui */}
+         <div className="bg-slate-900 border border-white/10 p-6 rounded-2xl">
+             <p className="text-slate-500 text-xs font-bold uppercase">Seu Saldo</p>
+             <p className="text-3xl font-black text-white mt-2">{profile?.pro_balance || 0} PRO</p>
+         </div>
+         {/* ... */}
+      </div>
+
     </div>
   );
 }
