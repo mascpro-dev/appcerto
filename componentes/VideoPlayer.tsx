@@ -8,18 +8,14 @@ export default function VideoPlayer({ title, videoUrl }: { title: string, videoU
   const [isPlaying, setIsPlaying] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
   const [videoId, setVideoId] = useState("");
-  const [imgError, setImgError] = useState(false); // Para tratar erro de imagem
 
-  // 1. Extração Inteligente do ID do YouTube
   useEffect(() => {
     if (videoUrl) {
-      // Regex poderoso que pega o ID mesmo com &list=, &index=, etc.
       const regExp = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
       const match = videoUrl.match(regExp);
       if (match && match[1]) {
         setVideoId(match[1]);
       } else {
-        // Fallback: se não achar, tenta pegar o final da string se for curto
         if(videoUrl.length === 11) setVideoId(videoUrl);
       }
     }
@@ -27,21 +23,21 @@ export default function VideoPlayer({ title, videoUrl }: { title: string, videoU
 
   const handlePlay = () => {
     setIsPlaying(true);
-    // Libera o botão após 15 segundos
     setTimeout(() => {
       setIsFinished(true);
     }, 15000); 
   };
 
   return (
-    <div>
+    // BLOQUEIO GERAL DE BOTÃO DIREITO (Context Menu)
+    <div onContextMenu={(e) => e.preventDefault()}>
+        
         {/* ÁREA DO VÍDEO */}
         <div className="relative w-full aspect-video bg-black border-b lg:border border-white/10 lg:rounded-b-2xl overflow-hidden group shadow-2xl">
             
             {!isPlaying ? (
                 /* --- CAPA (Antes do Play) --- */
                 <>
-                    {/* Imagem de Fundo (Usa hqdefault que é garantido) */}
                     {videoId && (
                         <div 
                             className="absolute inset-0 bg-cover bg-center opacity-60 transition-transform duration-700 group-hover:scale-105"
@@ -50,11 +46,8 @@ export default function VideoPlayer({ title, videoUrl }: { title: string, videoU
                             }}
                         ></div>
                     )}
-                    
-                    {/* Gradiente Dark */}
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent"></div>
 
-                    {/* Botão Play Personalizado */}
                     <div className="absolute inset-0 flex items-center justify-center z-20 cursor-pointer" onClick={handlePlay}>
                         <div className="w-24 h-24 bg-[#C9A66B] rounded-full flex items-center justify-center hover:scale-110 transition-transform shadow-[0_0_40px_rgba(201,166,107,0.5)] animate-pulse group-hover:animate-none">
                             <Play fill="black" className="ml-2 text-black" size={40} />
@@ -71,32 +64,41 @@ export default function VideoPlayer({ title, videoUrl }: { title: string, videoU
                     </div>
                 </>
             ) : (
-                /* --- IFRAME DO YOUTUBE --- */
+                /* --- PLAYER BLINDADO --- */
                 <div className="relative w-full h-full bg-black">
                     {videoId ? (
-                        <iframe 
-                            width="100%" 
-                            height="100%" 
-                            // Adicionei rel=0, modesto, e autoplay
-                            src={`https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&fs=1`}
-                            title="Aula MASC PRO"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-                            className="w-full h-full object-cover"
-                        ></iframe>
+                        <>
+                            <iframe 
+                                width="100%" 
+                                height="100%" 
+                                src={`https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1&rel=0&showinfo=0&loop=1&playlist=${videoId}&color=white&iv_load_policy=3&disablekb=1`}
+                                title="Aula MASC PRO"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                className="w-full h-full object-cover"
+                            ></iframe>
+                            
+                            {/* --- ESCUDOS INVISÍVEIS --- */}
+                            
+                            {/* 1. Bloqueia Barra Superior (Título e Compartilhar) */}
+                            <div className="absolute top-0 left-0 w-full h-16 bg-transparent z-10"></div>
+                            
+                            {/* 2. Bloqueia "Assistir no YouTube" (Canto Inferior Direito - Logo) */}
+                            {/* Deixamos um espaço para o botão de Tela Cheia funcionar */}
+                            <div className="absolute bottom-14 right-0 w-24 h-12 bg-transparent z-10"></div> 
+
+                        </>
                     ) : (
                         <div className="flex items-center justify-center h-full text-white gap-2">
-                             <Loader2 className="animate-spin" /> Carregando vídeo...
+                             <Loader2 className="animate-spin" /> Carregando...
                         </div>
                     )}
                 </div>
             )}
         </div>
 
-        {/* CONTROLES E BOTÃO DE RESGATE */}
+        {/* CONTROLES */}
         <div className="p-6 md:p-8 space-y-6">
             <div className="flex flex-wrap items-center gap-4">
-                
-                {/* O botão recebe o estado 'locked' baseado no tempo do vídeo */}
                 <LessonButton amount={50} locked={!isFinished} />
                 
                 {isFinished && (
@@ -112,8 +114,7 @@ export default function VideoPlayer({ title, videoUrl }: { title: string, videoU
             <div className="prose prose-invert max-w-none border-t border-white/10 pt-6">
                 <h3 className="text-xl font-bold text-white mb-2">Sobre esta aula</h3>
                 <p className="text-slate-400 leading-relaxed">
-                    Assista ao vídeo completo para desbloquear a recompensa em PROs. 
-                    O conteúdo prático deste módulo é essencial para sua evolução no ranking.
+                    Conteúdo protegido MASC PRO. A reprodução não autorizada é proibida.
                 </p>
             </div>
         </div>
