@@ -22,33 +22,26 @@ function CadastroForm() {
     e.preventDefault();
     setLoading(true);
 
-    // 1. Cria conta
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+    // MUDANÇA AQUI: Enviamos o referral_code DENTRO dos metadados
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: `${location.origin}/auth/callback`,
         data: {
           full_name: fullName,
+          referral_code: referralCode || null, // Manda o código aqui!
         },
       },
     });
 
-    if (authError) {
-      alert("Erro: " + authError.message);
+    if (error) {
+      alert("Erro ao cadastrar: " + error.message);
       setLoading(false);
       return;
     }
 
-    // 2. Se tiver indicação, salva o padrinho no banco
-    if (referralCode && authData.user) {
-      await supabase
-        .from("profiles")
-        .update({ referred_by: referralCode })
-        .eq("id", authData.user.id);
-    }
-
-    alert("Cadastro realizado! Faça login.");
+    alert("Conta criada com sucesso! Faça login.");
     router.push("/login");
     setLoading(false);
   };
@@ -65,7 +58,7 @@ function CadastroForm() {
 
         <form onSubmit={handleSignUp} className="space-y-4">
           <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-400 uppercase">Nome</label>
+            <label className="text-xs font-bold text-slate-400 uppercase">Nome Completo</label>
             <div className="relative">
                 <User className="absolute left-3 top-3 text-slate-500" size={18} />
                 <input
@@ -125,7 +118,6 @@ function CadastroForm() {
   );
 }
 
-// Página principal com Suspense (Essencial para não dar erro)
 export default function CadastroPage() {
   return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4">
