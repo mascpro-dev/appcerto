@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, GraduationCap, Users, LogOut, Medal, User } from "lucide-react";
+import { LayoutDashboard, PlayCircle, Trophy, Share2, LogOut, User } from "lucide-react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 export default function Sidebar() {
@@ -18,14 +18,14 @@ export default function Sidebar() {
 
   const menuItems = [
     { label: "Visão Geral", href: "/", icon: LayoutDashboard },
-    { label: "Evolução", href: "/evolucao", icon: GraduationCap },
-    { label: "Comunidade", href: "/comunidade", icon: Users },
-    { label: "Área Embaixador", href: "/embaixador", icon: Medal },
-    { label: "Meu Perfil", href: "/perfil", icon: User },
+    { label: "Aulas", href: "/evolucao", icon: PlayCircle },
+    { label: "Comunidade", href: "/comunidade", icon: Trophy },
+    { label: "Indicar", href: "/embaixador", icon: Share2 },
+    { label: "Perfil", href: "/perfil", icon: User },
   ];
 
   return (
-    // VOLTOU: "hidden md:flex" (Esconde no celular, mostra no PC)
+    // "hidden md:flex" -> Esconde no celular, mostra no PC
     <aside className="hidden md:flex w-64 bg-black border-r border-white/10 flex-col h-full shrink-0">
       
       <div className="p-8">
@@ -44,16 +44,17 @@ export default function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 px-4 py-4 rounded-xl transition-all group ${
+              className={`flex items-center gap-3 px-4 py-4 rounded-xl transition-all border group ${
                 isActive
-                  ? "bg-[#C9A66B] text-black font-bold shadow-[0_0_20px_rgba(201,166,107,0.3)]"
-                  : "text-slate-400 hover:text-white hover:bg-white/5"
+                  ? "bg-[#C9A66B] border-[#C9A66B] text-black font-bold shadow-[0_0_20px_rgba(201,166,107,0.3)]"
+                  : "bg-transparent border-transparent text-slate-400 hover:border-[#C9A66B] hover:text-[#C9A66B]" 
+                  // ^ AQUI ESTÁ O EFEITO DE BORDA AO PASSAR O MOUSE
               }`}
             >
               <item.icon
                 size={20}
                 className={`transition-colors ${
-                  isActive ? "text-black" : "text-slate-500 group-hover:text-white"
+                  isActive ? "text-black" : "text-slate-500 group-hover:text-[#C9A66B]"
                 }`}
               />
               <span className="text-sm">{item.label}</span>
@@ -65,13 +66,12 @@ export default function Sidebar() {
       <div className="p-4 border-t border-white/10 mt-auto">
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 px-4 py-4 w-full text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all"
+          className="flex items-center gap-3 px-4 py-4 w-full text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all border border-transparent hover:border-red-500/30"
         >
           <LogOut size={20} />
           <span className="text-sm font-bold">Sair da Conta</span>
         </button>
       </div>
-
     </aside>
   );
 }

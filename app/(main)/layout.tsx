@@ -1,5 +1,5 @@
 import Sidebar from "@/componentes/Sidebar"; 
-import MobileMenu from "@/componentes/MobileMenu"; // Novo Import
+import MobileBottomNav from "@/componentes/MobileBottomNav"; // Importando o novo menu de baixo
 
 export default function MainLayout({
   children,
@@ -7,20 +7,22 @@ export default function MainLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col md:flex-row h-screen bg-black overflow-hidden">
+    <div className="flex h-screen bg-black overflow-hidden">
       
-      {/* 1. Menu Mobile (Só aparece no celular) */}
-      <MobileMenu />
-
-      {/* 2. Menu Desktop (Só aparece no PC) */}
+      {/* MENU PC (Esquerda) */}
       <Sidebar />
 
-      {/* 3. Conteúdo Principal */}
+      {/* CONTEÚDO PRINCIPAL */}
       <main className="flex-1 overflow-y-auto overflow-x-hidden relative">
-        <div className="p-6 md:p-12 max-w-7xl mx-auto">
+        <div className="p-6 md:p-12 max-w-7xl mx-auto pb-24 md:pb-12"> 
+          {/* Adicionei pb-24 no mobile pra barra de baixo não tapar o conteúdo */}
           {children}
         </div>
       </main>
+
+      {/* MENU CELULAR (Embaixo) */}
+      <MobileBottomNav />
+      
     </div>
   );
 }
