@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, PlayCircle, Trophy, Share2, LogOut, User } from "lucide-react";
+import { LayoutDashboard, GraduationCap, Trophy, Share2, LogOut, User } from "lucide-react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 export default function Sidebar() {
@@ -18,14 +18,14 @@ export default function Sidebar() {
 
   const menuItems = [
     { label: "Visão Geral", href: "/", icon: LayoutDashboard },
-    { label: "Aulas", href: "/evolucao", icon: PlayCircle },
+    { label: "Aulas", href: "/evolucao", icon: GraduationCap },
     { label: "Comunidade", href: "/comunidade", icon: Trophy },
-    { label: "Indicar", href: "/embaixador", icon: Share2 },
-    { label: "Perfil", href: "/perfil", icon: User },
+    { label: "Área Embaixador", href: "/embaixador", icon: Share2 },
+    { label: "Meu Perfil", href: "/perfil", icon: User },
   ];
 
   return (
-    // "hidden" = Some no celular. "md:flex" = Aparece no PC.
+    // PC: Menu Fixo na Esquerda (w-64) | Celular: Escondido (hidden)
     <aside className="hidden md:flex w-64 bg-black border-r border-white/10 flex-col h-full shrink-0">
       
       <div className="p-8">
@@ -50,12 +50,7 @@ export default function Sidebar() {
                   : "bg-transparent border-transparent text-slate-400 hover:border-[#C9A66B] hover:text-[#C9A66B]"
               }`}
             >
-              <item.icon
-                size={20}
-                className={`transition-colors ${
-                  isActive ? "text-black" : "text-slate-500 group-hover:text-[#C9A66B]"
-                }`}
-              />
+              <item.icon size={20} className={isActive ? "text-black" : "text-slate-500 group-hover:text-[#C9A66B]"} />
               <span className="text-sm">{item.label}</span>
             </Link>
           );
@@ -63,15 +58,11 @@ export default function Sidebar() {
       </nav>
 
       <div className="p-4 border-t border-white/10 mt-auto">
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-3 px-4 py-4 w-full text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all"
-        >
+        <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-4 w-full text-slate-500 hover:text-red-400 font-bold">
           <LogOut size={20} />
-          <span className="text-sm font-bold">Sair da Conta</span>
+          Sair
         </button>
       </div>
-
     </aside>
   );
 }

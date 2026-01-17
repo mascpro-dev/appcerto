@@ -14,7 +14,9 @@ export default function VisaoGeralPage() {
   useEffect(() => {
     async function getData() {
       const { data: { session } } = await supabase.auth.getSession();
+      
       if (session) {
+        // 1. Pega os dados do perfil (Saldo, Nome)
         const { data } = await supabase
           .from("profiles")
           .select("*")
@@ -22,9 +24,10 @@ export default function VisaoGeralPage() {
           .single();
         setProfile(data);
 
-        // GERA O LINK REAL AQUI
+        // 2. Gera o Link de Indicação (Igual da área Embaixador)
         if (typeof window !== "undefined") {
-            setInviteLink(`${window.location.origin}/cadastro?ref=${session.user.id}`);
+            const origin = window.location.origin;
+            setInviteLink(`${origin}/cadastro?ref=${session.user.id}`);
         }
       }
       setLoading(false);
@@ -33,6 +36,7 @@ export default function VisaoGeralPage() {
   }, [supabase]);
 
   const handleCopy = () => {
+    if (!inviteLink) return;
     navigator.clipboard.writeText(inviteLink);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -41,9 +45,9 @@ export default function VisaoGeralPage() {
   if (loading) return <div className="p-8 text-white">Carregando painel...</div>;
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-20">
+    <div className="space-y-8 animate-in fade-in duration-500">
       
-      {/* HEADER */}
+      {/* HEADER: Saudação */}
       <div className="flex flex-col md:flex-row justify-between items-end gap-4">
         <div>
           <h1 className="text-3xl font-black text-white tracking-tighter">
@@ -55,7 +59,7 @@ export default function VisaoGeralPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           
-          {/* CARD DE SALDO */}
+          {/* CARD 1: SALDO */}
           <div className="bg-slate-900 border border-white/10 p-8 rounded-2xl flex flex-col justify-center relative overflow-hidden">
              <div className="absolute top-0 right-0 p-16 bg-blue-500/5 blur-3xl rounded-full pointer-events-none"></div>
              <div className="relative z-10">
@@ -71,7 +75,7 @@ export default function VisaoGeralPage() {
              <Trophy className="absolute right-8 bottom-8 text-slate-800 opacity-50" size={120} />
           </div>
 
-          {/* CARD PRÓXIMA PLACA */}
+          {/* CARD 2: META (PRÓXIMA PLACA) */}
           <div className="bg-slate-900 border border-white/10 p-8 rounded-2xl flex flex-col justify-between">
               <div>
                   <h3 className="text-xl font-bold text-white mb-1">Próxima Placa</h3>
@@ -84,7 +88,6 @@ export default function VisaoGeralPage() {
                       <span>10.000 PRO</span>
                   </div>
                   <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-                      {/* Barra de Progresso Segura */}
                       <div 
                         className="h-full bg-[#C9A66B]" 
                         style={{ width: `${Math.min(((profile?.pro_balance || 0) / 10000) * 100, 100)}%` }} 
@@ -98,7 +101,7 @@ export default function VisaoGeralPage() {
           </div>
       </div>
 
-      {/* --- CARD CONVITE --- */}
+      {/* --- CARD 3: CONVITE (O QUE VOCÊ PEDIU) --- */}
       <div className="border border-white/10 rounded-2xl p-6 bg-black flex flex-col md:flex-row items-center justify-between gap-6">
           <div>
               <h3 className="text-white font-bold text-lg mb-1 flex items-center gap-2">
@@ -111,11 +114,12 @@ export default function VisaoGeralPage() {
           </div>
 
           <div className="flex items-center gap-3 w-full md:w-auto">
+              {/* CAMPO DO LINK (VISUAL) */}
               <div className="bg-slate-900 border border-white/10 px-4 py-3 rounded-xl text-slate-400 font-mono text-xs w-full md:w-64 truncate">
-                  {inviteLink || "Carregando..."}
+                  {inviteLink || "Carregando link..."}
               </div>
               
-              {/* Botão Outline (Só Borda) */}
+              {/* BOTÃO OUTLINE (SÓ A BORDA) */}
               <button 
                   onClick={handleCopy}
                   className="bg-transparent border border-[#C9A66B] text-[#C9A66B] hover:bg-[#C9A66B] hover:text-black font-bold px-6 py-3 rounded-xl flex items-center gap-2 transition-all active:scale-95 whitespace-nowrap"
@@ -124,12 +128,13 @@ export default function VisaoGeralPage() {
                   {copied ? "Copiado" : "Copiar"}
               </button>
 
+              {/* BOTÃO TESTAR (ABRE O LINK) */}
               {inviteLink && (
                   <a 
                       href={inviteLink} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="bg-slate-900 hover:bg-slate-800 text-white p-3 rounded-xl transition-colors border border-white/10"
+                      className="bg-slate-900 hover:bg-slate-800 text-white p-3 rounded-xl transition-colors border border-white/10 hidden sm:flex"
                   >
                       <ExternalLink size={20} />
                   </a>
