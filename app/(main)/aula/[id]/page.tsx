@@ -1,99 +1,63 @@
-"use client";
+export const dynamic = "force-dynamic";
 
-import { useState, useRef } from "react";
-import { Play, Pause } from "lucide-react";
-import LessonButton from "./LessonButton";
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+// IMPORTANTE: O caminho abaixo deve apontar para onde você criou o VideoPlayer
+import VideoPlayer from "../../../../componentes/VideoPlayer"; 
 
-export default function VideoPlayer({ title, lessonId }: { title: string, lessonId: string }) {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isFinished, setIsFinished] = useState(false);
-  const [progress, setProgress] = useState(0);
+export default async function AulaPage({ params }: { params: { id: string } }) {
+  const supabase = createServerComponentClient({ cookies });
 
-  const handlePlay = () => {
-    setIsPlaying(true);
-    // Simula o vídeo rodando
-    let p = 0;
-    const interval = setInterval(() => {
-      p += 1; // Avança 1% a cada 50ms (Simulação rápida para teste: 5 segundos total)
-      setProgress(p);
-      if (p >= 100) {
-        clearInterval(interval);
-        setIsFinished(true);
-        setIsPlaying(false);
-      }
-    }, 50);
-  };
+  const { data: lesson } = await supabase
+    .from("Module")
+    .select("*")
+    .eq("id", params.id)
+    .single();
+
+  if (!lesson) {
+    return <div className="p-10 text-white">Aula não encontrada.</div>;
+  }
 
   return (
-    <div>
-        {/* PLAYER DE VÍDEO SIMULADO */}
-        <div className="relative w-full aspect-video bg-slate-900 border-b lg:border border-white/10 lg:rounded-b-2xl overflow-hidden group">
-            
-            {/* Imagem de Fundo (Simulada) */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-[url('/grid-pattern.svg')] opacity-20"></div>
-            
-            {/* Barra de Progresso Real */}
-            <div className="absolute top-0 left-0 w-full h-1 bg-white/10 z-30">
-                <div 
-                    className="h-full bg-[#A6CE44] transition-all duration-100 ease-linear" 
-                    style={{ width: `${progress}%` }} 
-                />
-            </div>
+    <div className="min-h-screen bg-black text-white pb-20">
+      {/* Navegação */}
+      <div className="flex items-center justify-between p-6 border-b border-white/10 bg-black/50 backdrop-blur-md sticky top-0 z-30">
+        <Link 
+          href="/evolucao" 
+          className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-bold uppercase tracking-wide"
+        >
+          <ArrowLeft size={18} /> Voltar
+        </Link>
+        <div className="flex items-center gap-2">
+            <span className="text-[#C9A66B] font-bold text-xs uppercase tracking-widest border border-[#C9A66B]/30 px-3 py-1 rounded bg-[#C9A66B]/10">
+                Valendo 50 PRO
+            </span>
+        </div>
+      </div>
 
-            {/* Controles */}
-            {!isPlaying && !isFinished && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-20">
-                    <button 
-                        onClick={handlePlay}
-                        className="w-20 h-20 bg-[#A6CE44] rounded-full flex items-center justify-center hover:scale-110 transition-transform shadow-[0_0_30px_rgba(166,206,68,0.4)] animate-pulse"
-                    >
-                        <Play fill="black" className="ml-1 text-black" size={32} />
-                    </button>
-                </div>
-            )}
-            
-            {isPlaying && (
-                 <div className="absolute inset-0 flex items-center justify-center z-10" onClick={() => setIsPlaying(false)}>
-                    {/* Aqui entraria o iframe do Youtube/Vimeo */}
-                    <p className="text-[#A6CE44] font-mono animate-pulse">REPRODUZINDO AULA... {progress}%</p>
-                 </div>
-            )}
+      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-0 lg:gap-8">
+        
+        {/* Coluna Vídeo (O Player cuida do botão agora) */}
+        <div className="col-span-2">
+            <VideoPlayer title={lesson.title} lessonId={params.id} />
+        </div>
 
-            {isFinished && (
-                 <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-md z-20">
-                    <div className="text-center">
-                        <p className="text-white font-bold text-xl mb-2">Aula Concluída! 🎉</p>
-                        <button onClick={handlePlay} className="text-slate-400 text-sm hover:text-white flex items-center gap-2 justify-center">
-                            <Play size={14} /> Assistir Novamente
-                        </button>
+        {/* Coluna Playlist */}
+        <div className="bg-slate-950 border-l border-white/10 min-h-screen p-6 hidden lg:block">
+            <h3 className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-6">Neste Módulo</h3>
+            <div className="space-y-4">
+                <div className="flex gap-4 p-4 rounded-xl bg-white/5 border border-[#C9A66B]/30 cursor-default">
+                    <div className="text-[#C9A66B] font-bold text-sm">01</div>
+                    <div>
+                        <p className="text-white font-bold text-sm line-clamp-2">{lesson.title}</p>
+                        <p className="text-[#A6CE44] text-xs mt-1 font-bold flex items-center gap-1">Reproduzindo</p>
                     </div>
-                 </div>
-            )}
-
-            <div className="absolute bottom-0 left-0 w-full p-6 bg-gradient-to-t from-black via-black/60 to-transparent pointer-events-none">
-                <h1 className="text-2xl md:text-3xl font-black text-white leading-tight">
-                    {title}
-                </h1>
+                </div>
             </div>
         </div>
-
-        {/* ÁREA DOS BOTÕES (Conecta com o LessonButton) */}
-        <div className="p-6 md:p-8 space-y-6">
-            <div className="flex flex-wrap items-center gap-4">
-                {/* AQUI ESTÁ A MÁGICA: passamos locked={!isFinished} */}
-                <LessonButton amount={50} locked={!isFinished} />
-                
-                <button className="flex-1 md:flex-none bg-slate-800 hover:bg-slate-700 text-white font-bold px-6 py-4 rounded-xl flex items-center justify-center gap-2 transition-all border border-white/5">
-                    Compartilhar
-                </button>
-            </div>
-            <div className="prose prose-invert max-w-none">
-                <h3 className="text-xl font-bold text-white mb-2">Sobre esta aula</h3>
-                <p className="text-slate-400 leading-relaxed">
-                    Conteúdo fundamental para o seu avanço no ranking MASC PRO.
-                </p>
-            </div>
-        </div>
+      </div>
     </div>
   );
 }
