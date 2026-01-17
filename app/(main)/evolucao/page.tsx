@@ -3,24 +3,12 @@ export const dynamic = "force-dynamic";
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import Link from "next/link";
-import { Play, Lock, Zap, Trophy } from "lucide-react";
-
-// Funçãozinha para pegar o ID do YouTube e montar a URL da capa
-function getYoutubeThumbnail(url: string | null) {
-  if (!url) return null;
-  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-  const match = url.match(regExp);
-  if (match && match[2].length === 11) {
-    return `https://img.youtube.com/vi/${match[2]}/mqdefault.jpg`;
-  }
-  return null;
-}
+import { Play, Lock, Zap, Trophy, ImageIcon } from "lucide-react";
 
 export default async function EvolucaoPage() {
   const supabase = createServerComponentClient({ cookies });
   const { data: { session } } = await supabase.auth.getSession();
 
-  // Busca saldo
   const { data: profile } = await supabase
     .from("profiles")
     .select("pro_balance")
@@ -29,7 +17,6 @@ export default async function EvolucaoPage() {
 
   const balance = profile?.pro_balance ?? 0;
 
-  // Busca módulos
   const { data: modules } = await supabase
     .from("Module")
     .select("*")
@@ -60,45 +47,45 @@ export default async function EvolucaoPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         
         {modules?.map((lesson) => {
-          // Calcula a capa aqui
-          const thumbnailUrl = getYoutubeThumbnail(lesson.video_url);
-
           return (
             <Link 
               key={lesson.id} 
               href={`/aula/${lesson.id}`}
               className="group relative bg-slate-900 border border-white/10 hover:border-[#C9A66B] rounded-2xl overflow-hidden transition-all hover:-translate-y-1 hover:shadow-[0_0_30px_rgba(201,166,107,0.15)] flex flex-col"
             >
-              {/* Capa do Card (Agora Dinâmica) */}
+              {/* --- CAPA DE MARKETING (DESIGN) --- */}
               <div className="aspect-video relative bg-black group-hover:opacity-80 transition-opacity">
                   
-                  {/* FOTO DE FUNDO (Se tiver link, mostra a foto. Se não, mostra fundo preto) */}
-                  {thumbnailUrl ? (
+                  {/* Se tiver Capa de Marketing, usa ela. Se não, usa um gradiente padrão elegante */}
+                  {lesson.cover_url ? (
                      <div 
                         className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
-                        style={{ backgroundImage: `url(${thumbnailUrl})` }}
+                        style={{ backgroundImage: `url(${lesson.cover_url})` }}
                      />
                   ) : (
-                     <div className="absolute inset-0 bg-slate-800" />
+                     // Fundo Padrão (Sem imagem)
+                     <div className="absolute inset-0 bg-gradient-to-br from-slate-800 to-black flex items-center justify-center">
+                        <ImageIcon className="text-slate-700 opacity-20" size={40} />
+                     </div>
                   )}
 
-                  {/* Gradiente para o texto aparecer bem */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent opacity-90 z-10" />
+                  {/* Filtro Escuro para o texto ler bem */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent opacity-90 z-10" />
                   
-                  {/* Ícone Play Outline */}
-                  <div className="absolute inset-0 flex items-center justify-center z-20 opacity-50 group-hover:opacity-100 transition-opacity">
-                       <div className="w-14 h-14 rounded-full border-2 border-white flex items-center justify-center group-hover:border-[#C9A66B] group-hover:scale-110 transition-all backdrop-blur-sm">
-                          <Play size={24} className="text-white ml-1 group-hover:text-[#C9A66B]" fill="currentColor" />
+                  {/* Ícone Play Discreto */}
+                  <div className="absolute inset-0 flex items-center justify-center z-20 opacity-0 group-hover:opacity-100 transition-opacity">
+                       <div className="w-14 h-14 rounded-full border-2 border-white flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                          <Play size={24} className="text-white ml-1" fill="currentColor" />
                        </div>
                   </div>
                   
                   {/* TAG DO MÓDULO */}
-                  <div className="absolute top-4 left-4 z-20 border border-[#C9A66B] text-[#C9A66B] text-[10px] font-bold px-3 py-1 rounded-lg uppercase tracking-wider backdrop-blur-md bg-black/30">
+                  <div className="absolute top-4 left-4 z-20 bg-[#C9A66B] text-black text-[10px] font-bold px-3 py-1 rounded shadow-lg uppercase tracking-wider">
                       MÓDULO {String(lesson.id).padStart(2, '0')}
                   </div>
               </div>
 
-              <div className="relative z-20 p-6 flex flex-col flex-1 bg-slate-900">
+              <div className="relative z-20 p-6 flex flex-col flex-1 bg-slate-900 border-t border-white/5">
                   <h3 className="text-lg font-bold text-white group-hover:text-[#C9A66B] transition-colors line-clamp-2 leading-tight mb-2">
                       {lesson.title}
                   </h3>
@@ -114,7 +101,7 @@ export default async function EvolucaoPage() {
           );
         })}
 
-        {/* Card Bloqueado (Exemplo Visual) */}
+        {/* Card Bloqueado (Exemplo) */}
         <div className="relative bg-slate-950 border border-white/5 rounded-2xl overflow-hidden opacity-40 cursor-not-allowed aspect-video md:aspect-auto flex flex-col grayscale">
             <div className="flex-1 flex flex-col items-center justify-center gap-3 p-8">
                 <Lock size={24} className="text-slate-500" />
