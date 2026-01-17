@@ -1,4 +1,3 @@
-// CORREÇÃO: Agora apontando para "components" (em inglês)
 import Sidebar from "@/componentes/Sidebar"; 
 
 export default function MainLayout({
@@ -8,7 +7,7 @@ export default function MainLayout({
 }) {
   return (
     <div className="flex h-screen bg-black overflow-hidden">
-      {/* Menu Lateral */}
+      {/* Menu Lateral Fixo */}
       <Sidebar />
 
       {/* Conteúdo da Página */}
