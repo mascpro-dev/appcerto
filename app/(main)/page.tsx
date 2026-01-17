@@ -22,6 +22,7 @@ export default function VisaoGeralPage() {
           .single();
         setProfile(data);
 
+        // GERA O LINK REAL AQUI
         if (typeof window !== "undefined") {
             setInviteLink(`${window.location.origin}/cadastro?ref=${session.user.id}`);
         }
@@ -42,6 +43,7 @@ export default function VisaoGeralPage() {
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">
       
+      {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-end gap-4">
         <div>
           <h1 className="text-3xl font-black text-white tracking-tighter">
@@ -53,6 +55,7 @@ export default function VisaoGeralPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           
+          {/* CARD DE SALDO */}
           <div className="bg-slate-900 border border-white/10 p-8 rounded-2xl flex flex-col justify-center relative overflow-hidden">
              <div className="absolute top-0 right-0 p-16 bg-blue-500/5 blur-3xl rounded-full pointer-events-none"></div>
              <div className="relative z-10">
@@ -68,6 +71,7 @@ export default function VisaoGeralPage() {
              <Trophy className="absolute right-8 bottom-8 text-slate-800 opacity-50" size={120} />
           </div>
 
+          {/* CARD PRÓXIMA PLACA */}
           <div className="bg-slate-900 border border-white/10 p-8 rounded-2xl flex flex-col justify-between">
               <div>
                   <h3 className="text-xl font-bold text-white mb-1">Próxima Placa</h3>
@@ -80,7 +84,11 @@ export default function VisaoGeralPage() {
                       <span>10.000 PRO</span>
                   </div>
                   <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-                      <div className="h-full bg-[#C9A66B]" style={{ width: `${Math.min(((profile?.pro_balance || 0) / 10000) * 100, 100)}%` }} /> 
+                      {/* Barra de Progresso Segura */}
+                      <div 
+                        className="h-full bg-[#C9A66B]" 
+                        style={{ width: `${Math.min(((profile?.pro_balance || 0) / 10000) * 100, 100)}%` }} 
+                      /> 
                   </div>
               </div>
 
@@ -107,7 +115,7 @@ export default function VisaoGeralPage() {
                   {inviteLink || "Carregando..."}
               </div>
               
-              {/* BOTÃO CORRIGIDO: Fundo transparente (bg-transparent) e Borda Dourada */}
+              {/* Botão Outline (Só Borda) */}
               <button 
                   onClick={handleCopy}
                   className="bg-transparent border border-[#C9A66B] text-[#C9A66B] hover:bg-[#C9A66B] hover:text-black font-bold px-6 py-3 rounded-xl flex items-center gap-2 transition-all active:scale-95 whitespace-nowrap"
