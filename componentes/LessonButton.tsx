@@ -1,40 +1,73 @@
 "use client";
 
-import { useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { useState } from "react";
+import { CheckCircle, Zap, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { CheckCircle, Loader2, Coins } from "lucide-react";
 
-export default function LessonButton({ amount = 50 }: { amount?: number }) {
+export default function LessonButton({ amount }: { amount: number }) {
   const [loading, setLoading] = useState(false);
   const [completed, setCompleted] = useState(false);
-  const router = useRouter();
   const supabase = createClientComponentClient();
+  const router = useRouter();
 
-  const handleComplete = async () => {
-    if (completed) return; // Evita clique duplo
+  const handleCollect = async () => {
     setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
-    try {
-      // 1. Chama a função segura do Banco de Dados
-      const { error } = await supabase.rpc('add_pros', { amount });
+    // Busca saldo atual
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('pro_balance')
+        .eq('id', user.id)
+        .single();
+    
+    // Soma +50
+    const newBalance = (profile?.pro_balance || 0) + amount;
 
-      if (error) throw error;
+    // Atualiza
+    const { error } = await supabase
+        .from('profiles')
+        .update({ pro_balance: newBalance })
+        .eq('id', user.id);
 
-      // 2. Sucesso!
+    if (!error) {
       setCompleted(true);
-      
-      // 3. Atualiza o saldo na tela sem recarregar a página
       router.refresh(); 
-
-      // Opcional: Tocar um som de "Ca-ching" aqui futuramente
-      
-    } catch (err) {
-      console.error("Erro ao depositar:", err);
-      alert("Erro de conexão. Tente novamente.");
-    } finally {
-      setLoading(false);
+    } else {
+      alert("Erro ao resgatar.");
     }
+    setLoading(false);
+  };
+
+  if (completed) {
+    return (
+      <button disabled className="flex-1 border border-green-500 text-green-500 font-bold py-4 rounded-xl flex items-center justify-center gap-2 cursor-default bg-transparent opacity-50">
+        <CheckCircle size={20} />
+        Resgatado (+{amount} PRO)
+      </button>
+    );
+  }
+
+  return (
+    <button 
+      onClick={handleCollect}
+      disabled={loading}
+      // ESTILO OUTLINE VERDE NEON
+      className="flex-1 group bg-transparent hover:bg-[#A6CE44]/10 border border-[#A6CE44] text-[#A6CE44] font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-[0_0_10px_rgba(166,206,68,0.1)] hover:shadow-[0_0_20px_rgba(166,206,68,0.3)]"
+    >
+      {loading ? (
+        <Loader2 className="animate-spin" />
+      ) : (
+        <>
+            <Zap size={20} className="group-hover:scale-110 transition-transform" /> 
+            RESGATAR +{amount} PRO
+        </>
+      )}
+    </button>
+  );
+}
   };
 
   if (completed) {
