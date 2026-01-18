@@ -26,8 +26,14 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* --- 1. VERSÃO PC (LADO ESQUERDO) --- */}
+      {/* ==============================================================
+          VERSÃO PC (Desktop) 
+          - Aparece só em telas médias pra cima (md:flex)
+          - Escondido no celular (hidden)
+          - Fica na esquerda (w-64)
+      =============================================================== */}
       <aside className="hidden md:flex w-64 bg-black border-r border-white/10 flex-col h-full shrink-0 relative z-40">
+        
         <div className="p-8">
           <h1 className="text-2xl font-black text-white italic tracking-tighter">
             MASC <span className="text-[#C9A66B]">PRO</span>
@@ -65,31 +71,42 @@ export default function Sidebar() {
         </div>
       </aside>
 
-      {/* --- 2. VERSÃO CELULAR (RODAPÉ ESTILO APP) --- */}
-      <div className="md:hidden fixed bottom-0 left-0 w-full bg-black border-t border-white/10 z-[50] pb-safe shadow-2xl">
+      {/* ==============================================================
+          VERSÃO CELULAR (Mobile)
+          - Escondido no PC (md:hidden)
+          - Fixo no rodapé (fixed bottom-0)
+          - Fundo preto total (w-full bg-black)
+          - Ícones centralizados (max-w-[400px])
+      =============================================================== */}
+      <div className="md:hidden fixed bottom-0 left-0 w-full bg-black border-t border-white/10 z-[9999] pb-safe shadow-[0_-5px_20px_rgba(0,0,0,0.8)]">
         <div className="flex items-center justify-between px-6 h-20 max-w-[400px] mx-auto relative">
           
+          {/* Início */}
           <Link href="/" className="flex flex-col items-center justify-center w-12 gap-1 group">
             <LayoutDashboard size={20} className={pathname === "/" ? "text-[#C9A66B]" : "text-slate-500"} />
             <span className={`text-[9px] font-bold mt-1 ${pathname === "/" ? "text-[#C9A66B]" : "text-slate-500"}`}>Início</span>
           </Link>
 
+          {/* Aulas */}
           <Link href="/evolucao" className="flex flex-col items-center justify-center w-12 gap-1 group">
             <GraduationCap size={22} className={pathname === "/evolucao" ? "text-[#C9A66B]" : "text-slate-500"} />
             <span className={`text-[9px] font-bold mt-1 ${pathname === "/evolucao" ? "text-[#C9A66B]" : "text-slate-500"}`}>Aulas</span>
           </Link>
 
-          <div className="relative -top-5">
-            <Link href="/perfil" className="w-14 h-14 rounded-full bg-[#C9A66B] flex items-center justify-center border-[4px] border-black shadow-[0_4px_15px_rgba(201,166,107,0.4)] active:scale-95 transition-transform">
-                <User size={24} className="text-black" />
+          {/* BOTÃO CENTRAL (PERFIL) */}
+          <div className="relative -top-6">
+            <Link href="/perfil" className="w-16 h-16 rounded-full bg-[#C9A66B] flex items-center justify-center border-[5px] border-black shadow-[0_0_20px_rgba(201,166,107,0.4)] active:scale-95 transition-transform">
+                <User size={28} className="text-black" />
             </Link>
           </div>
 
+          {/* Rank */}
           <Link href="/comunidade" className="flex flex-col items-center justify-center w-12 gap-1 group">
             <Trophy size={20} className={pathname === "/comunidade" ? "text-[#C9A66B]" : "text-slate-500"} />
             <span className={`text-[9px] font-bold mt-1 ${pathname === "/comunidade" ? "text-[#C9A66B]" : "text-slate-500"}`}>Rank</span>
           </Link>
 
+          {/* Rede */}
           <Link href="/embaixador" className="flex flex-col items-center justify-center w-12 gap-1 group">
             <Share2 size={20} className={pathname === "/embaixador" ? "text-[#C9A66B]" : "text-slate-500"} />
             <span className={`text-[9px] font-bold mt-1 ${pathname === "/embaixador" ? "text-[#C9A66B]" : "text-slate-500"}`}>Rede</span>
