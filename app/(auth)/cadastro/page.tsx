@@ -1,12 +1,13 @@
 "use client";
 
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { useState } from "react";
+import { useState, Suspense } from "react"; // Adicionado Suspense aqui
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Loader2, Instagram, Phone, User, Lock, Mail, FileText } from "lucide-react";
 
-export default function CadastroPage() {
+// 1. COMPONENTE INTERNO (LÓGICA DO FORMULÁRIO)
+function CadastroForm() {
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -18,11 +19,10 @@ export default function CadastroPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams(); // Agora está seguro aqui dentro
   const supabase = createClientComponentClient();
   const refId = searchParams.get("ref");
 
-  // MÁSCARAS DE INPUT
   const formatCPF = (value: string) => {
     return value
       .replace(/\D/g, "")
@@ -54,22 +54,19 @@ export default function CadastroPage() {
     setError("");
 
     try {
-      // 1. Cria usuário Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
           data: {
             full_name: formData.fullName,
-            username: formData.instagram.replace("@", ""), // Salva sem o @
-            // Os outros campos salvamos direto na tabela profiles via trigger ou update manual abaixo
+            username: formData.instagram.replace("@", ""),
           },
         },
       });
 
       if (authError) throw authError;
 
-      // 2. Atualiza tabela profiles com os dados extras
       if (authData.user) {
         const { error: profileError } = await supabase
           .from("profiles")
@@ -77,17 +74,16 @@ export default function CadastroPage() {
             instagram: formData.instagram,
             whatsapp: formData.whatsapp,
             cpf: formData.cpf,
-            invited_by: refId || null, // Salva quem indicou
+            invited_by: refId || null,
           })
           .eq("id", authData.user.id);
 
         if (profileError) {
             console.error("Erro ao salvar perfil:", profileError);
-            // Não bloqueia o cadastro, mas avisa no console
         }
       }
 
-      router.push("/"); // Manda pro Home
+      router.push("/");
     } catch (err: any) {
       setError(err.message || "Erro ao cadastrar.");
     } finally {
@@ -96,9 +92,7 @@ export default function CadastroPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-8 animate-in fade-in duration-500">
-        
+    <div className="w-full max-w-md space-y-8 animate-in fade-in duration-500">
         <div className="text-center">
           <h1 className="text-3xl font-black text-white italic tracking-tighter">
             MASC <span className="text-[#C9A66B]">PRO</span>
@@ -114,7 +108,6 @@ export default function CadastroPage() {
             </div>
           )}
 
-          {/* Nome */}
           <div className="space-y-1">
             <label className="text-xs font-bold text-slate-500 uppercase">Nome Completo</label>
             <div className="relative">
@@ -129,7 +122,6 @@ export default function CadastroPage() {
             </div>
           </div>
 
-          {/* Email */}
           <div className="space-y-1">
             <label className="text-xs font-bold text-slate-500 uppercase">Email</label>
             <div className="relative">
@@ -146,7 +138,6 @@ export default function CadastroPage() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-              {/* Instagram */}
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-500 uppercase">Instagram</label>
                 <div className="relative">
@@ -161,7 +152,6 @@ export default function CadastroPage() {
                 </div>
               </div>
 
-              {/* WhatsApp */}
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-500 uppercase">WhatsApp</label>
                 <div className="relative">
@@ -179,7 +169,6 @@ export default function CadastroPage() {
               </div>
           </div>
 
-          {/* CPF */}
           <div className="space-y-1">
             <label className="text-xs font-bold text-slate-500 uppercase">CPF</label>
             <div className="relative">
@@ -196,7 +185,6 @@ export default function CadastroPage() {
             </div>
           </div>
 
-          {/* Senha */}
           <div className="space-y-1">
             <label className="text-xs font-bold text-slate-500 uppercase">Senha</label>
             <div className="relative">
@@ -223,9 +211,18 @@ export default function CadastroPage() {
           <p className="text-center text-slate-500 text-sm mt-4">
             Já tem conta? <Link href="/login" className="text-[#C9A66B] hover:underline">Entrar</Link>
           </p>
-
         </form>
-      </div>
+    </div>
+  );
+}
+
+// 2. PÁGINA PRINCIPAL (Onde aplicamos a correção do Suspense)
+export default function CadastroPage() {
+  return (
+    <div className="min-h-screen bg-black flex items-center justify-center p-4">
+      <Suspense fallback={<div className="text-white text-center">Carregando formulário...</div>}>
+        <CadastroForm />
+      </Suspense>
     </div>
   );
 }
