@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, PlayCircle, Trophy, ShoppingBag, Calendar, User, LogOut, Share2 } from "lucide-react";
+import { LayoutDashboard, PlayCircle, Trophy, Share2, LogOut, User, ShoppingBag, Calendar } from "lucide-react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 export default function Sidebar() {
@@ -16,26 +16,21 @@ export default function Sidebar() {
     router.push("/login");
   };
 
-  // Ícones baseados no seu print "Capturartela visaão.JPG"
+  // MENU DO PC (Com Rede e Loja)
   const menuItems = [
     { label: "Visão Geral", href: "/", icon: LayoutDashboard },
     { label: "Evolução", href: "/evolucao", icon: PlayCircle },
     { label: "Comunidade", href: "/comunidade", icon: Trophy },
-    { label: "Loja PRO", href: "/loja", icon: ShoppingBag }, // Adicionei conforme seu print
-    { label: "Eventos", href: "/eventos", icon: Calendar },   // Adicionei conforme seu print
+    { label: "Loja PRO", href: "/loja", icon: ShoppingBag },
+    { label: "Eventos", href: "/eventos", icon: Calendar },
+    { label: "Rede", href: "/embaixador", icon: Share2 }, // <-- VOLTOU AQUI
     { label: "Meu Perfil", href: "/perfil", icon: User },
   ];
 
   return (
     <>
-      {/* ==========================================================
-          VERSÃO PC (DESKTOP)
-          - hidden md:flex: Garante que só aparece em telas grandes
-          - w-64: Largura fixa lateral
-      =========================================================== */}
+      {/* ======================= VERSÃO PC ======================= */}
       <aside className="hidden md:flex w-64 bg-black border-r border-white/10 flex-col h-full shrink-0 z-50">
-        
-        {/* CABEÇALHO */}
         <div className="p-8">
           <h1 className="text-2xl font-black text-white italic tracking-tighter">
             MASC <span className="text-[#C9A66B]">PRO</span>
@@ -45,7 +40,6 @@ export default function Sidebar() {
           </p>
         </div>
 
-        {/* MENU VERTICAL */}
         <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
           {menuItems.map((item) => {
             const isActive = pathname === item.href;
@@ -66,7 +60,6 @@ export default function Sidebar() {
           })}
         </nav>
 
-        {/* RODAPÉ (SAIR) */}
         <div className="p-4 mt-auto border-t border-white/10">
           <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-4 w-full text-slate-500 hover:text-red-400 hover:bg-white/5 rounded-xl transition-all">
             <LogOut size={20} />
@@ -75,11 +68,19 @@ export default function Sidebar() {
         </div>
       </aside>
 
-      {/* ==========================================================
-          VERSÃO CELULAR (MOBILE)
-          - md:hidden: Garante que só aparece no celular
-          - fixed bottom-0: Cola no chão
-      =========================================================== */}
+      {/* ======================= VERSÃO CELULAR ======================= */}
+      
+      {/* 1. TOPO FIXO NO CELULAR (Para o botão Sair) */}
+      <div className="md:hidden fixed top-0 left-0 w-full h-16 bg-black/90 backdrop-blur-md border-b border-white/10 z-[50] flex items-center justify-between px-6">
+         <h1 className="text-lg font-black text-white italic tracking-tighter">
+            MASC <span className="text-[#C9A66B]">PRO</span>
+         </h1>
+         <button onClick={handleLogout} className="text-slate-400 hover:text-red-400 p-2">
+            <LogOut size={20} />
+         </button>
+      </div>
+
+      {/* 2. MENU RODAPÉ NO CELULAR */}
       <div className="md:hidden fixed bottom-0 left-0 w-full bg-black border-t border-white/10 z-[9999] pb-safe shadow-[0_-10px_30px_rgba(0,0,0,0.8)]">
         <div className="flex items-center justify-between px-6 h-20 max-w-sm mx-auto relative">
           
@@ -93,7 +94,6 @@ export default function Sidebar() {
             <span className={`text-[9px] font-bold ${pathname === "/evolucao" ? "text-[#C9A66B]" : "text-slate-500"}`}>Aulas</span>
           </Link>
 
-          {/* BOTÃO FLUTUANTE */}
           <div className="relative -top-6">
             <Link href="/perfil" className="w-14 h-14 rounded-full bg-[#C9A66B] flex items-center justify-center border-[4px] border-black shadow-[0_0_15px_rgba(201,166,107,0.5)]">
                 <User size={24} className="text-black" />
