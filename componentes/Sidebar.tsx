@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { LayoutDashboard, GraduationCap, Trophy, Share2, LogOut, User } from "lucide-react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
+// IMPORTANTE: Este componente NÃO pode receber { children }
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
@@ -25,7 +26,6 @@ export default function Sidebar() {
   ];
 
   return (
-    // TRAVA DE SEGURANÇA: "hidden md:flex" (Invisível no celular, Flex no PC)
     <aside className="hidden md:flex w-64 bg-black border-r border-white/10 flex-col h-full shrink-0 relative z-40">
       
       <div className="p-8">
