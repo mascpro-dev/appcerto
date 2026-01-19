@@ -2,7 +2,7 @@
 
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useState, Suspense } from "react"; 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2, Instagram, Phone, User, Lock, Mail, FileText, Briefcase, Scissors, CheckCircle } from "lucide-react";
 
@@ -14,37 +14,18 @@ function CadastroForm() {
     instagram: "",
     whatsapp: "",
     cpf: "",
-    role: "cabeleireiro", // Valor padrão
+    role: "cabeleireiro", // Padrão
   });
   
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false); // Novo estado de sucesso
+  const [success, setSuccess] = useState(false); 
   const [error, setError] = useState("");
-  const searchParams = useSearchParams();
+  const router = useRouter(); 
   const supabase = createClientComponentClient();
-  const refId = searchParams.get("ref");
 
   // --- MÁSCARAS ---
-  const formatCPF = (value: string) => {
-    return value.replace(/\D/g, "")
-      .replace(/(\d{3})(\d)/, "$1.$2")
-      .replace(/(\d{3})(\d)/, "$1.$2")
-      .replace(/(\d{3})(\d{1,2})/, "$1-$2")
-      .replace(/(-\d{2})\d+?$/, "$1");
-  };
-
-  const formatPhone = (value: string) => {
-    return value.replace(/\D/g, "")
-      .replace(/(\d{2})(\d)/, "($1) $2")
-      .replace(/(\d{5})(\d)/, "$1-$2")
-      .replace(/(-\d{4})\d+?$/, "$1");
-  };
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    let value = e.target.value;
-    if (e.target.name === "cpf") value = formatCPF(value);
-    if (e.target.name === "whatsapp") value = formatPhone(value);
-    setFormData({ ...formData, [e.target.name]: value });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -53,7 +34,7 @@ function CadastroForm() {
     setError("");
 
     try {
-      // 1. Cria usuário Auth
+      // 1. Cria usuário JÁ COM A ROLE nos metadados (A Trigger do banco vai pegar isso)
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -61,60 +42,47 @@ function CadastroForm() {
           data: {
             full_name: formData.fullName,
             username: formData.instagram.replace("@", ""),
-            role: formData.role, // Tenta salvar direto nos metadados também
+            role: formData.role, // <--- IMPORTANTE: Envia a escolha aqui
           },
         },
       });
 
       if (authError) throw authError;
 
+      // 2. Atualiza dados complementares (Telefone/CPF)
       if (authData.user) {
-        // 2. FORÇA a atualização no perfil (Garante que a role fique certa)
-        // Usamos upsert para garantir que se o trigger for lento, nós criamos/atualizamos
-        const { error: profileError } = await supabase
+         await supabase
           .from("profiles")
           .update({
             instagram: formData.instagram,
             whatsapp: formData.whatsapp,
             cpf: formData.cpf,
-            role: formData.role, // <--- Aqui está o segredo
-            invited_by: refId || null,
           })
           .eq("id", authData.user.id);
-          
-         if (profileError) {
-             console.error("Erro ao atualizar perfil:", profileError);
-             // Não bloqueia o sucesso, mas loga o erro
-         }
       }
 
-      // 3. Mostra a tela de sucesso (Confirmação de Email)
+      // 3. Mostra SUCESSO e para o loading
       setSuccess(true);
 
     } catch (err: any) {
       setError(err.message || "Erro ao cadastrar.");
-    } finally {
-      setLoading(false);
+      setLoading(false); // Só para o loading se der erro
     }
   };
 
-  // --- TELA DE SUCESSO (Avisa do E-mail) ---
+  // --- TELA DE SUCESSO ---
   if (success) {
       return (
         <div className="w-full max-w-md bg-[#0A0A0A] p-8 rounded-2xl border border-white/10 text-center animate-in zoom-in duration-300">
             <div className="mx-auto w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mb-6">
                 <CheckCircle size={32} className="text-green-500" />
             </div>
-            <h2 className="text-2xl font-black text-white mb-2">Quase lá!</h2>
+            <h2 className="text-2xl font-black text-white mb-2">Verifique seu E-mail!</h2>
             <p className="text-slate-400 mb-6">
-                Enviamos um link de confirmação para <strong>{formData.email}</strong>.
-                <br/><br/>
-                Clique no link do seu e-mail para ativar sua conta e acessar o painel.
+                Para ativar sua conta de <strong>{formData.role === 'distribuidor' ? 'Distribuidor' : 'Cabeleireiro'}</strong>, 
+                clique no link que enviamos para <strong>{formData.email}</strong>.
             </p>
-            <Link 
-                href="/login" 
-                className="block w-full bg-[#C9A66B] text-black font-bold py-4 rounded-xl hover:bg-[#b08d55] transition-all"
-            >
+            <Link href="/login" className="block w-full bg-[#C9A66B] text-black font-bold py-4 rounded-xl hover:bg-[#b08d55]">
                 Ir para Login
             </Link>
         </div>
@@ -134,69 +102,45 @@ function CadastroForm() {
         <form onSubmit={handleSignUp} className="space-y-4 bg-[#0A0A0A] p-8 rounded-2xl border border-white/10">
           {error && <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 text-sm rounded-lg">{error}</div>}
 
-          {/* SELETOR DE PERFIL */}
+          {/* SELETOR */}
           <div className="space-y-1">
             <label className="text-xs font-bold text-[#C9A66B] uppercase">Qual seu perfil?</label>
             <div className="relative">
-                {formData.role === 'cabeleireiro' ? (
-                    <Scissors className="absolute left-3 top-3.5 text-[#C9A66B]" size={18} />
-                ) : (
-                    <Briefcase className="absolute left-3 top-3.5 text-[#C9A66B]" size={18} />
-                )}
-                
-                <select
-                    name="role"
-                    value={formData.role}
-                    onChange={handleChange}
-                    className="w-full bg-black border border-[#C9A66B]/50 rounded-xl py-3 pl-10 pr-4 text-white focus:border-[#C9A66B] outline-none appearance-none cursor-pointer font-medium"
-                >
+                {formData.role === 'cabeleireiro' ? <Scissors className="absolute left-3 top-3.5 text-[#C9A66B]" size={18} /> : <Briefcase className="absolute left-3 top-3.5 text-[#C9A66B]" size={18} />}
+                <select name="role" value={formData.role} onChange={handleChange} className="w-full bg-black border border-[#C9A66B]/50 rounded-xl py-3 pl-10 pr-4 text-white outline-none cursor-pointer">
                     <option value="cabeleireiro">Sou Cabeleireiro(a)</option>
                     <option value="distribuidor">Sou Distribuidor(a)</option>
                 </select>
-                
-                <div className="absolute right-4 top-4 pointer-events-none">
-                    <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                </div>
             </div>
           </div>
 
-          <div className="border-t border-white/10 my-4"></div>
-
-          {/* CAMPOS PESSOAIS */}
           <div className="space-y-1">
             <label className="text-xs font-bold text-slate-500 uppercase">Nome Completo</label>
-            <div className="relative"><User className="absolute left-3 top-3 text-slate-500" size={18} /><input name="fullName" required placeholder="Seu nome" className="w-full bg-black border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white focus:border-[#C9A66B] outline-none" onChange={handleChange} /></div>
+            <div className="relative"><User className="absolute left-3 top-3 text-slate-500" size={18} /><input name="fullName" required placeholder="Nome" className="w-full bg-black border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white outline-none focus:border-[#C9A66B]" onChange={handleChange} /></div>
           </div>
           
           <div className="space-y-1">
             <label className="text-xs font-bold text-slate-500 uppercase">Email</label>
-            <div className="relative"><Mail className="absolute left-3 top-3 text-slate-500" size={18} /><input name="email" type="email" required placeholder="seu@email.com" className="w-full bg-black border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white focus:border-[#C9A66B] outline-none" onChange={handleChange} /></div>
+            <div className="relative"><Mail className="absolute left-3 top-3 text-slate-500" size={18} /><input name="email" type="email" required placeholder="email@exemplo.com" className="w-full bg-black border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white outline-none focus:border-[#C9A66B]" onChange={handleChange} /></div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500 uppercase">Instagram</label>
-                <div className="relative"><Instagram className="absolute left-3 top-3 text-slate-500" size={18} /><input name="instagram" required placeholder="@usuario" className="w-full bg-black border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white focus:border-[#C9A66B] outline-none" onChange={handleChange} /></div>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500 uppercase">WhatsApp</label>
-                <div className="relative"><Phone className="absolute left-3 top-3 text-slate-500" size={18} /><input name="whatsapp" required placeholder="(00) 00000-0000" value={formData.whatsapp} maxLength={15} className="w-full bg-black border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white focus:border-[#C9A66B] outline-none" onChange={handleChange} /></div>
-              </div>
+            <div className="space-y-1"><label className="text-xs font-bold text-slate-500 uppercase">Instagram</label><div className="relative"><Instagram className="absolute left-3 top-3 text-slate-500" size={18} /><input name="instagram" placeholder="@insta" className="w-full bg-black border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white outline-none focus:border-[#C9A66B]" onChange={handleChange} /></div></div>
+            <div className="space-y-1"><label className="text-xs font-bold text-slate-500 uppercase">WhatsApp</label><div className="relative"><Phone className="absolute left-3 top-3 text-slate-500" size={18} /><input name="whatsapp" placeholder="(00) 00000-0000" className="w-full bg-black border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white outline-none focus:border-[#C9A66B]" onChange={handleChange} /></div></div>
           </div>
 
           <div className="space-y-1">
             <label className="text-xs font-bold text-slate-500 uppercase">CPF</label>
-            <div className="relative"><FileText className="absolute left-3 top-3 text-slate-500" size={18} /><input name="cpf" required placeholder="000.000.000-00" value={formData.cpf} maxLength={14} className="w-full bg-black border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white focus:border-[#C9A66B] outline-none" onChange={handleChange} /></div>
+            <div className="relative"><FileText className="absolute left-3 top-3 text-slate-500" size={18} /><input name="cpf" placeholder="000.000.000-00" className="w-full bg-black border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white outline-none focus:border-[#C9A66B]" onChange={handleChange} /></div>
           </div>
 
           <div className="space-y-1">
             <label className="text-xs font-bold text-slate-500 uppercase">Senha</label>
-            <div className="relative"><Lock className="absolute left-3 top-3 text-slate-500" size={18} /><input name="password" type="password" required placeholder="******" className="w-full bg-black border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white focus:border-[#C9A66B] outline-none" onChange={handleChange} /></div>
+            <div className="relative"><Lock className="absolute left-3 top-3 text-slate-500" size={18} /><input name="password" type="password" required placeholder="******" className="w-full bg-black border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white outline-none focus:border-[#C9A66B]" onChange={handleChange} /></div>
           </div>
 
-          <button disabled={loading} className="w-full bg-[#C9A66B] hover:bg-[#b08d55] text-black font-bold py-4 rounded-xl transition-all active:scale-95 mt-4 flex items-center justify-center gap-2">
-            {loading ? <Loader2 className="animate-spin" /> : null}
-            {loading ? "Criando..." : "FINALIZAR CADASTRO"}
+          <button disabled={loading} className="w-full bg-[#C9A66B] hover:bg-[#b08d55] text-black font-bold py-4 rounded-xl mt-4 flex items-center justify-center gap-2">
+            {loading ? <Loader2 className="animate-spin" /> : "FINALIZAR CADASTRO"}
           </button>
           
           <p className="text-center text-slate-500 text-sm mt-4">Já tem conta? <Link href="/login" className="text-[#C9A66B] hover:underline">Entrar</Link></p>
@@ -205,11 +149,10 @@ function CadastroForm() {
   );
 }
 
-// 2. A PÁGINA PRINCIPAL
 export default function CadastroPage() {
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-4">
-      <Suspense fallback={<div className="text-white text-center">Carregando formulário...</div>}>
+      <Suspense fallback={<div className="text-white text-center">Carregando...</div>}>
         <CadastroForm />
       </Suspense>
     </div>
