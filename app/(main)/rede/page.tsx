@@ -33,10 +33,10 @@ export default function RedePage() {
     setBaseUrl(window.location.origin);
   }, []);
 
- // Altere apenas esta linha. Mantenha todo o seu layout de cards e cores igual.
-const inviteLink = userId 
-  ? `https://appcerto-xi.vercel.app/cadastro?ref=${userId}` 
-  : "https://appcerto-xi.vercel.app/cadastro";
+  // Altere apenas esta linha. Mantenha todo o seu layout de cards e cores igual.
+  const inviteLink = userId 
+    ? `https://appcerto-xi.vercel.app/cadastro?ref=${userId}` 
+    : "https://appcerto-xi.vercel.app/cadastro";
 
   const handleCopy = () => {
     navigator.clipboard.writeText(inviteLink);
