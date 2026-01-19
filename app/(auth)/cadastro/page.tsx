@@ -14,16 +14,14 @@ function CadastroForm() {
     instagram: "",
     whatsapp: "",
     cpf: "",
-    role: "cabeleireiro", // Padrão
+    role: "cabeleireiro", 
   });
   
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false); 
   const [error, setError] = useState("");
   const router = useRouter(); 
   const supabase = createClientComponentClient();
 
-  // --- MÁSCARAS ---
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -34,62 +32,34 @@ function CadastroForm() {
     setError("");
 
     try {
-      // 1. Cria usuário JÁ COM A ROLE nos metadados (A Trigger do banco vai pegar isso)
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      // AQUI ESTÁ O SEGREDO: Enviamos TUDO nos metadados para a Trigger pegar
+      const { data, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
           data: {
             full_name: formData.fullName,
-            username: formData.instagram.replace("@", ""),
-            role: formData.role, // <--- IMPORTANTE: Envia a escolha aqui
+            username: formData.instagram.replace("@", ""), // Para compatibilidade
+            role: formData.role,
+            instagram: formData.instagram,
+            whatsapp: formData.whatsapp,
+            cpf: formData.cpf,
           },
         },
       });
 
       if (authError) throw authError;
 
-      // 2. Atualiza dados complementares (Telefone/CPF)
-      if (authData.user) {
-         await supabase
-          .from("profiles")
-          .update({
-            instagram: formData.instagram,
-            whatsapp: formData.whatsapp,
-            cpf: formData.cpf,
-          })
-          .eq("id", authData.user.id);
-      }
-
-      // 3. Mostra SUCESSO e para o loading
-      setSuccess(true);
+      // Se deu certo, redireciona para a Home (o Layout vai cuidar de mandar pro Onboarding)
+      router.refresh();
+      router.push("/");
 
     } catch (err: any) {
       setError(err.message || "Erro ao cadastrar.");
-      setLoading(false); // Só para o loading se der erro
+      setLoading(false); 
     }
   };
 
-  // --- TELA DE SUCESSO ---
-  if (success) {
-      return (
-        <div className="w-full max-w-md bg-[#0A0A0A] p-8 rounded-2xl border border-white/10 text-center animate-in zoom-in duration-300">
-            <div className="mx-auto w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mb-6">
-                <CheckCircle size={32} className="text-green-500" />
-            </div>
-            <h2 className="text-2xl font-black text-white mb-2">Verifique seu E-mail!</h2>
-            <p className="text-slate-400 mb-6">
-                Para ativar sua conta de <strong>{formData.role === 'distribuidor' ? 'Distribuidor' : 'Cabeleireiro'}</strong>, 
-                clique no link que enviamos para <strong>{formData.email}</strong>.
-            </p>
-            <Link href="/login" className="block w-full bg-[#C9A66B] text-black font-bold py-4 rounded-xl hover:bg-[#b08d55]">
-                Ir para Login
-            </Link>
-        </div>
-      );
-  }
-
-  // --- FORMULÁRIO ---
   return (
     <div className="w-full max-w-md space-y-8 animate-in fade-in duration-500">
         <div className="text-center">
