@@ -1,10 +1,11 @@
 "use client";
 
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronRight, Check, ShieldCheck, AlertCircle } from "lucide-react";
 
+// ... (Mantenha o array STEPS igualzinho estava antes, para economizar espaço aqui) ...
 const STEPS = [
   {
     title: "Performance que se mantém",
@@ -36,9 +37,34 @@ const STEPS = [
 export default function OnboardingPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState(""); // Para mostrar erro na tela
+  const [checking, setChecking] = useState(true); // Novo estado de verificação
+  const [errorMsg, setErrorMsg] = useState("");
   const router = useRouter();
   const supabase = createClientComponentClient();
+
+  // 1. VERIFICAÇÃO INVERSA: Se já terminou, VAZA DAQUI.
+  useEffect(() => {
+    async function checkStatus() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("onboarding_completed")
+          .eq("id", session.user.id)
+          .single();
+        
+        // Se já está TRUE no banco, manda pra home
+        if (profile?.onboarding_completed) {
+            router.push("/");
+        } else {
+            setChecking(false); // Libera para ver o onboarding
+        }
+      } else {
+          setChecking(false);
+      }
+    }
+    checkStatus();
+  }, [supabase, router]);
 
   const handleFinish = async () => {
     setLoading(true);
@@ -46,33 +72,26 @@ export default function OnboardingPage() {
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        throw new Error("Sessão perdida. Faça login novamente.");
-      }
+      if (!session) throw new Error("Sessão perdida.");
 
-      // Tenta atualizar o banco
       const { error } = await supabase
         .from("profiles")
         .update({ onboarding_completed: true })
         .eq("id", session.user.id);
 
-      if (error) {
-        console.error("Erro Supabase:", error);
-        throw new Error("Não foi possível salvar seu progresso. Tente novamente.");
-      }
+      if (error) throw error;
       
-      // Se deu certo:
-      // 1. Atualiza o cache do roteador para a Home saber que mudou
       router.refresh(); 
-      // 2. Redireciona
       router.push("/");
 
     } catch (err: any) {
-      setErrorMsg(err.message);
+      setErrorMsg("Erro ao salvar. Tente atualizar a página.");
       setLoading(false);
     }
   };
+
+  // Enquanto verifica se já fez, mostra tela preta (para não piscar)
+  if (checking) return <div className="h-screen w-full bg-black" />;
 
   return (
     <div className={`h-screen w-full bg-gradient-to-br ${STEPS[currentStep].bg} flex flex-col items-center justify-center p-6 text-center transition-colors duration-700`}>
@@ -101,10 +120,7 @@ export default function OnboardingPage() {
           </p>
       </div>
 
-      {/* ÁREA DE AÇÃO (BOTÃO + ERRO) */}
       <div className="absolute bottom-10 w-full px-6 max-w-md space-y-4">
-          
-          {/* MENSAGEM DE ERRO (Se o banco travar, aparece aqui) */}
           {errorMsg && (
             <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-lg text-sm flex items-center gap-2">
                 <AlertCircle size={16} /> {errorMsg}
