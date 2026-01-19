@@ -2,7 +2,7 @@
 
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useEffect, useState } from "react";
-import { Copy, CheckCircle, TrendingUp, UserPlus, Users } from "lucide-react";
+import { Copy, CheckCircle, TrendingUp, UserPlus } from "lucide-react";
 
 export default function RedePage() {
   const [indicados, setIndicados] = useState<any[]>([]);
@@ -15,22 +15,17 @@ export default function RedePage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         setUserId(session.user.id);
-        // Busca membros onde o campo 'invited_by' é o ID do usuário logado
         const { data } = await supabase
           .from("profiles")
-          .select("full_name, created_at, status")
-          .eq('invited_by', session.user.id)
-          .order('created_at', { ascending: false });
+          .select("full_name, created_at")
+          .eq('invited_by', session.user.id);
         if (data) setIndicados(data);
       }
     }
     getData();
   }, [supabase]);
 
-  // Link corrigido com HTTPS e rota /ref/
-  const inviteLink = userId 
-    ? `https://mascpro.app/ref/${userId}`
-    : "https://mascpro.app";
+  const inviteLink = `https://mascpro.app/ref/${userId || ""}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(inviteLink);
@@ -41,19 +36,16 @@ export default function RedePage() {
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-        <div>
-          <h1 className="text-3xl font-black text-white italic uppercase tracking-tighter leading-none">Minha <span className="text-[#C9A66B]">Rede</span></h1>
-          <p className="text-slate-500 text-sm mt-1">Membros que entraram pelo seu link.</p>
-        </div>
-
+        <h1 className="text-3xl font-black text-white italic uppercase tracking-tighter">Minha <span className="text-[#C9A66B]">Rede</span></h1>
+        
         <div className="flex items-center gap-2 p-1 rounded-xl border border-white/10 bg-[#0A0A0A]">
           <div className="px-4 py-2">
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Convite Exclusivo</p>
-            <a href={inviteLink} target="_blank" rel="noopener noreferrer" className="text-xs text-white font-medium hover:text-[#C9A66B]">
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Link de Convite</p>
+            <a href={inviteLink} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 font-mono hover:underline">
               {inviteLink}
             </a>
           </div>
-          <button onClick={handleCopy} className="bg-transparent text-white px-6 py-3 rounded-lg font-black text-xs uppercase hover:bg-white/5 transition-all">
+          <button onClick={handleCopy} className="bg-[#C9A66B] text-black px-6 py-3 rounded-lg font-black text-xs uppercase hover:opacity-90">
             {copied ? "Copiado!" : "Copiar"}
           </button>
         </div>
@@ -66,28 +58,7 @@ export default function RedePage() {
         </div>
         <div className="bg-[#0A0A0A] border border-white/5 p-6 rounded-2xl flex items-center gap-5">
           <div className="w-12 h-12 rounded-xl bg-[#C9A66B]/10 flex items-center justify-center text-[#C9A66B]"><TrendingUp size={24} /></div>
-          <div><p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">PROs de Indicação</p><p className="text-3xl font-black text-white">{indicados.length * 50} <span className="text-sm font-bold text-[#C9A66B]">PRO</span></p></div>
-        </div>
-      </div>
-
-      {/* Tabela de Membros para verificar se o cadastro computou */}
-      <div className="bg-[#0A0A0A] border border-white/5 rounded-2xl overflow-hidden">
-        <div className="p-6 border-b border-white/5"><h3 className="text-sm font-bold text-white uppercase tracking-widest">Membros Recentes</h3></div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-white/5 text-slate-500 uppercase text-[10px] font-bold">
-              <tr><th className="px-6 py-4">Nome</th><th className="px-6 py-4">Data</th><th className="px-6 py-4">Status</th></tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {indicados.map((item, i) => (
-                <tr key={i} className="text-slate-300">
-                  <td className="px-6 py-4 font-bold">{item.full_name || "Membro Masc"}</td>
-                  <td className="px-6 py-4">{new Date(item.created_at).toLocaleDateString('pt-BR')}</td>
-                  <td className="px-6 py-4"><span className="text-green-500 font-bold">Ativo</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div><p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">PROs Gerados</p><p className="text-3xl font-black text-white">{indicados.length * 50} PRO</p></div>
         </div>
       </div>
     </div>
