@@ -4,7 +4,7 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useEffect, useState } from "react";
 import { Trophy } from "lucide-react";
 
-// OS 5 PILARES DO MANIFESTO (Cultura MASC PRO)
+// --- OS 5 PILARES (Garante que o manifesto esteja aqui) ---
 const PILARES = [
   "Performance que se mantém: Resultado que não ilude, fideliza.",
   "Tecnologia + Método: Não vendemos produto. Sustentamos um sistema.",
@@ -16,13 +16,17 @@ const PILARES = [
 export default function VisaoGeralPage() {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [dailyPillar, setDailyPillar] = useState(""); // Estado para a frase do dia
+  
+  // Começa com a primeira frase para não ficar vazio, depois sorteia
+  const [dailyPillar, setDailyPillar] = useState(PILARES[0]); 
+  
   const supabase = createClientComponentClient();
 
   useEffect(() => {
     async function getData() {
       try {
-        // 1. Sorteia um Pilar para exibir nesta sessão
+        // 1. SORTEIO ALEATÓRIO (A mágica acontece aqui)
+        // Isso garante que cada vez que der F5 mude a frase
         const randomIndex = Math.floor(Math.random() * PILARES.length);
         setDailyPillar(PILARES[randomIndex]);
 
@@ -52,24 +56,25 @@ export default function VisaoGeralPage() {
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       
-      {/* HEADER COM MANIFESTO CULTURAL */}
+      {/* --- CABEÇALHO COM A FRASE ROTATIVA --- */}
       <div>
         <h1 className="text-3xl font-black text-white tracking-tighter">
           Olá, {profile?.full_name?.split(' ')[0] || "Membro"}
         </h1>
         
-        {/* AQUI ENTRA O PILAR (SUBSTITUI O TEXTO PADRÃO) */}
-        <p className="text-[#C9A66B]/80 mt-2 font-medium italic text-sm border-l-2 border-[#C9A66B] pl-3 py-1">
-          "{dailyPillar}"
-        </p>
+        {/* A FRASE DO PILAR APARECE AQUI */}
+        <div className="mt-3 border-l-2 border-[#C9A66B] pl-4 py-1">
+            <p className="text-[#C9A66B] font-medium italic text-sm md:text-base">
+              "{dailyPillar}"
+            </p>
+        </div>
       </div>
 
+      {/* --- CARDS DE SALDO E META (Mantidos iguais) --- */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* CARD 1: SALDO (MASC COIN) */}
+          {/* CARD 1: SALDO */}
           <div className="bg-[#0A0A0A] border border-white/10 p-8 rounded-2xl relative overflow-hidden">
-             {/* Efeito de luz no fundo */}
              <div className="absolute top-0 right-0 p-20 bg-blue-500/5 blur-3xl rounded-full pointer-events-none"></div>
-             
              <div className="relative z-10">
                  <div className="inline-flex items-center gap-2 border border-white/10 bg-white/5 rounded-full px-3 py-1 mb-4">
                     <Trophy size={12} className="text-slate-300"/>
@@ -82,7 +87,7 @@ export default function VisaoGeralPage() {
              </div>
           </div>
 
-          {/* CARD 2: META (PLACAS) */}
+          {/* CARD 2: META */}
           <div className="bg-[#0A0A0A] border border-white/10 p-8 rounded-2xl flex flex-col justify-between">
               <div>
                   <h3 className="text-xl font-bold text-white mb-1">Próxima Placa</h3>
@@ -94,7 +99,6 @@ export default function VisaoGeralPage() {
                       <span>{profile?.pro_balance || 0} PRO</span>
                       <span>10.000 PRO</span>
                   </div>
-                  {/* Barra de Progresso */}
                   <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
                       <div 
                         className="h-full bg-[#C9A66B]" 
