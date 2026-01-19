@@ -14,7 +14,6 @@ export default function PerfilPage() {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session) {
-        // Busca TUDO do perfil
         const { data } = await supabase
           .from("profiles")
           .select("*")
@@ -31,8 +30,8 @@ export default function PerfilPage() {
   if (loading) return <div className="p-12 text-slate-500">Carregando perfil...</div>;
 
   const isDistribuidor = profile?.role === 'distribuidor';
-
-  // Monta o endereço visualmente (se existir no banco)
+  
+  // Lógica inteligente para o endereço
   const enderecoCompleto = [profile?.city, profile?.state].filter(Boolean).join(" - ");
 
   return (
@@ -68,7 +67,7 @@ export default function PerfilPage() {
               {/* DADOS */}
               <div className="text-center md:text-left space-y-2">
                   
-                  {/* AJUSTE 1: Só mostra a etiqueta se tiver um nível REAL gravado no banco */}
+                  {/* SÓ MOSTRA ETIQUETA SE TIVER NÍVEL NO BANCO */}
                   {profile?.current_level && (
                     <div className="inline-flex items-center gap-1 bg-[#C9A66B]/10 border border-[#C9A66B]/20 px-3 py-1 rounded-full text-[#C9A66B] text-[10px] font-black uppercase tracking-widest mb-1">
                         <ShieldCheck size={10} />
@@ -98,7 +97,7 @@ export default function PerfilPage() {
       {/* GRID INFERIOR */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           
-          {/* DETALHES DE CONTATO */}
+          {/* CARD DE CONTATO */}
           <div className="bg-[#0A0A0A] border border-white/10 p-6 rounded-2xl">
               <h3 className="text-[#C9A66B] font-bold text-sm uppercase tracking-wider mb-6 flex items-center gap-2">
                   <Briefcase size={14} /> Detalhes Profissionais
@@ -124,15 +123,14 @@ export default function PerfilPage() {
               </div>
           </div>
 
-          {/* LOCALIZAÇÃO (DINÂMICA) */}
+          {/* CARD DE LOCALIZAÇÃO */}
           <div className="bg-[#0A0A0A] border border-white/10 p-6 rounded-2xl">
               <h3 className="text-[#C9A66B] font-bold text-sm uppercase tracking-wider mb-6 flex items-center gap-2">
                   <MapPin size={14} /> Localização
               </h3>
               
-              {/* AJUSTE 2: Se tiver endereço no banco, mostra. Se não, mostra botão de adicionar. */}
               {enderecoCompleto ? (
-                  <div className="space-y-4">
+                  <div className="space-y-4 animate-in fade-in">
                       <div className="h-20 bg-white/5 rounded-xl flex items-center justify-center border border-white/10">
                           <p className="text-white font-bold">{enderecoCompleto}</p>
                       </div>
