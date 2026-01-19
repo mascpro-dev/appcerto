@@ -1,14 +1,17 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { PlayCircle, LayoutGrid, User, Trophy, Share2 } from "lucide-react";
+import VideoPlayer from "@/componentes/VideoPlayer";
 
-// No seu menu mobile e desktop, o link deve ser exatamente este:
-const menuItems = [
-  { name: "Início", href: "/", icon: LayoutGrid },
-  { name: "Aulas", href: "/aulas", icon: PlayCircle }, // Este link abre a vitrine de aulas
-  { name: "Perfil", href: "/perfil", icon: User, isFloating: true },
-  { name: "Rank", href: "/comunidade", icon: Trophy },
-  { name: "Rede", href: "/rede", icon: Share2 },
-];
+// Definimos uma função padrão para a página para o Next.js reconhecer a rota
+export default function AulasPage() {
+  return (
+    <div className="w-full animate-in fade-in duration-500">
+      {/* Aqui carregamos o seu VideoPlayer.tsx original com as aulas anexadas */}
+      {/* Passamos as propriedades obrigatórias para evitar o erro de tipagem */}
+      <VideoPlayer 
+        title="MASC PRO - Sala de Aula" 
+        videoUrl="https://www.youtube.com/watch?v=SEU_VIDEO_INICIAL" 
+      />
+    </div>
+  );
+}
