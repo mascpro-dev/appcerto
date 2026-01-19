@@ -8,9 +8,9 @@ export default function RefCapturePage({ params }: { params: { id: string } }) {
 
   useEffect(() => {
     if (params.id) {
-      // Salva a indicação sem afetar o visual
+      // Salva a indicação no navegador sem afetar o visual
       localStorage.setItem("masc_referrer", params.id);
-      // Redireciona para o cadastro
+      // Redireciona para a página de cadastro
       router.push("/auth-choice");
     }
   }, [params.id, router]);
