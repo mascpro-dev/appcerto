@@ -4,7 +4,7 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useEffect, useState } from "react";
 import { Trophy } from "lucide-react";
 
-// OS 5 PILARES (Frases que vão rotacionar)
+// OS 5 PILARES (Isso vai substituir a frase antiga)
 const PILARES = [
   "Performance que se mantém: Resultado que não ilude, fideliza.",
   "Tecnologia + Método: Não vendemos produto. Sustentamos um sistema.",
@@ -16,16 +16,21 @@ const PILARES = [
 export default function VisaoGeralPage() {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Começa mostrando o primeiro pilar por padrão
   const [dailyPillar, setDailyPillar] = useState(PILARES[0]); 
+  
   const supabase = createClientComponentClient();
 
   useEffect(() => {
     async function getData() {
       try {
-        // SORTEIA A FRASE (Cada F5 muda o texto)
+        // --- SORTEIO DA FRASE ---
+        // Toda vez que a página carrega, ele pega um número aleatório
         const randomIndex = Math.floor(Math.random() * PILARES.length);
         setDailyPillar(PILARES[randomIndex]);
 
+        // Busca dados do usuário
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session) {
@@ -34,6 +39,7 @@ export default function VisaoGeralPage() {
             .select("*")
             .eq("id", session.user.id)
             .single();
+          
           setProfile(data);
         }
       } catch (error) {
@@ -45,7 +51,7 @@ export default function VisaoGeralPage() {
     getData();
   }, [supabase]);
 
-  if (loading) return <div className="p-12 text-slate-500">Carregando...</div>;
+  if (loading) return <div className="p-12 text-slate-500">Carregando pilares...</div>;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -56,16 +62,18 @@ export default function VisaoGeralPage() {
           Olá, {profile?.full_name?.split(' ')[0] || "Membro"}
         </h1>
         
-        {/* AQUI ESTÁ A MÁGICA: O PILAR APARECE EM DOURADO */}
-        <div className="mt-3 border-l-2 border-[#C9A66B] pl-4 py-1">
+        {/* AQUI MUDOU: Em vez do texto simples, entra o Pilar Dourado */}
+        <div className="mt-2 border-l-2 border-[#C9A66B] pl-3 py-1">
             <p className="text-[#C9A66B] font-medium italic text-sm md:text-base">
               "{dailyPillar}"
             </p>
         </div>
       </div>
 
-      {/* CARDS */}
+      {/* CARDS (SALDO E META) - Mantidos iguais */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          {/* Card Saldo */}
           <div className="bg-[#0A0A0A] border border-white/10 p-8 rounded-2xl relative overflow-hidden">
              <div className="absolute top-0 right-0 p-20 bg-blue-500/5 blur-3xl rounded-full pointer-events-none"></div>
              <div className="relative z-10">
@@ -80,6 +88,7 @@ export default function VisaoGeralPage() {
              </div>
           </div>
 
+          {/* Card Meta */}
           <div className="bg-[#0A0A0A] border border-white/10 p-8 rounded-2xl flex flex-col justify-between">
               <div>
                   <h3 className="text-xl font-bold text-white mb-1">Próxima Placa</h3>
