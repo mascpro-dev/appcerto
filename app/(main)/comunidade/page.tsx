@@ -1,213 +1,131 @@
 "use client";
 
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { useEffect, useState } from "react";
-import { Trophy, Instagram, Phone, Search, Users, Briefcase, Scissors } from "lucide-react";
+import { useState } from "react";
+import { Trophy, MessageSquare, Share2, Heart, Award, Instagram, MapPin, Send } from "lucide-react";
+
+const TOP_3 = [
+  { id: 1, name: "Ricardo Silva", cidade: "São Paulo/SP", pro: "2.450", insta: "@ricardo_hair" },
+  { id: 2, name: "Ana Beatriz", cidade: "Curitiba/PR", pro: "2.100", insta: "@ana_style" },
+  { id: 3, name: "Marcos Paulo", cidade: "Rio de Janeiro/RJ", pro: "1.980", insta: "@marcos_pro" },
+];
+
+const TOP_7 = [
+  { rank: 4, name: "Julia Lins", cidade: "BH", pro: "1.850" },
+  { rank: 5, name: "Bruno Costa", cidade: "POA", pro: "1.720" },
+  { rank: 6, name: "Carla Dias", cidade: "REC", pro: "1.600" },
+  { rank: 7, name: "Vitor Hugo", cidade: "SSA", pro: "1.550" },
+  { rank: 8, name: "Sonia Abrão", cidade: "FLN", pro: "1.400" },
+  { rank: 9, name: "Pedro Vale", cidade: "BSB", pro: "1.320" },
+  { rank: 10, name: "Lana Rho", cidade: "MAO", pro: "1.200" },
+];
 
 export default function ComunidadePage() {
-  const [members, setMembers] = useState<any[]>([]);
-  const [myProfile, setMyProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  
-  // Controle da visão (Geral ou Distribuidores)
-  const [viewMode, setViewMode] = useState<'geral' | 'distribuidores'>('geral');
-  
-  const supabase = createClientComponentClient();
-
-  useEffect(() => {
-    async function getData() {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session) {
-        // 1. Quem sou eu?
-        const { data: profile } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", session.user.id)
-            .single();
-        setMyProfile(profile);
-
-        // 2. Quem são todos?
-        const { data: allMembers } = await supabase
-            .from("profiles")
-            .select("*")
-            .order("pro_balance", { ascending: false })
-            .limit(100);
-        
-        if (allMembers) setMembers(allMembers);
-      }
-      setLoading(false);
-    }
-    getData();
-  }, [supabase]);
-
-  // --- A REGRA DE OURO (FILTRO) ---
-  const currentList = members.filter(m => {
-      if (viewMode === 'distribuidores') {
-          // Aba Distribuidores: Só mostra distribuidores
-          return m.role === 'distribuidor';
-      } else {
-          // Aba Geral: Mostra Cabeleireiros e Embaixadores (EXCLUI Distribuidores)
-          return m.role !== 'distribuidor';
-      }
-  });
-
-  // Aplica a busca na lista já filtrada
-  const filteredMembers = currentList.filter(m => 
-    m.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    m.username?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const top3 = filteredMembers.slice(0, 3);
-  const list = filteredMembers.slice(3);
-
-  if (loading) return <div className="p-12 text-slate-500">Carregando ranking...</div>;
+  const [post, setPost] = useState("");
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="flex flex-col lg:flex-row gap-8 animate-in fade-in duration-700 pb-24">
       
-      {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-end gap-6">
-        <div className="flex items-center gap-4">
-            <div className="p-4 bg-[#C9A66B]/10 rounded-2xl border border-[#C9A66B]/20">
-                {viewMode === 'geral' ? (
-                    <Users size={32} className="text-[#C9A66B]" />
-                ) : (
-                    <Briefcase size={32} className="text-[#C9A66B]" />
-                )}
-            </div>
-            <div>
-                <h1 className="text-3xl font-black text-white tracking-tighter">
-                    {viewMode === 'geral' ? "Comunidade" : "Ranking Distribuidores"}
-                </h1>
-                <p className="text-slate-400 mt-1">
-                    {viewMode === 'geral' ? "Ranking de Profissionais e Embaixadores." : "Ranking exclusivo de volume e vendas."}
-                </p>
-            </div>
+      {/* --- FEED ESTILO 'X' (LADO ESQUERDO / CENTRAL) --- */}
+      <div className="flex-1 space-y-6">
+        <div className="border-b border-white/5 pb-4">
+          <h1 className="text-2xl font-black text-white italic uppercase tracking-tighter">
+            Comunidade <span className="text-[#C9A66B]">Masc Pro</span>
+          </h1>
+          <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Troca Real • Sem Julgamentos</p>
         </div>
-        
-        {/* BUSCA */}
-        <div className="relative w-full md:w-64">
-            <Search className="absolute left-3 top-3 text-slate-500" size={18} />
-            <input 
-                placeholder="Buscar membro..." 
-                className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-[#C9A66B]"
-                onChange={(e) => setSearchTerm(e.target.value)}
-            />
+
+        {/* INPUT DE POSTAGEM GUIADA */}
+        <div className="bg-[#0A0A0A] border border-white/5 rounded-2xl p-4 space-y-4">
+          <textarea 
+            value={post}
+            onChange={(e) => setPost(e.target.value)}
+            placeholder="Compartilhe uma evolução técnica ou dúvida com contexto..."
+            className="w-full bg-transparent border-none focus:ring-0 text-sm text-slate-300 placeholder:text-slate-600 resize-none h-24"
+          />
+          <div className="flex justify-between items-center border-t border-white/5 pt-4">
+            <span className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">Participação > Aparência</span>
+            <button className="bg-[#C9A66B] text-black px-4 py-2 rounded-lg text-xs font-black flex items-center gap-2 hover:scale-105 transition-transform uppercase">
+              <Send size={14} /> Postar
+            </button>
+          </div>
+        </div>
+
+        {/* LISTA DE POSTS (FEED) */}
+        <div className="space-y-4">
+          {[1, 2].map((i) => (
+            <div key={i} className="bg-[#050505] border border-white/5 rounded-2xl p-6 space-y-4 transition-all hover:border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-zinc-800 rounded-full border border-[#C9A66B]/20" />
+                <div>
+                  <p className="text-sm font-black text-white italic">Membro Fundador #{i+124}</p>
+                  <p className="text-[10px] text-slate-500 uppercase font-bold">Há 2 horas • São Paulo/SP</p>
+                </div>
+              </div>
+              <p className="text-sm text-slate-300 leading-relaxed font-medium">
+                Hoje consegui aplicar a técnica de correção de cor que vimos no módulo de Evolução. O segredo foi o tempo de pausa. Alguém mais teve essa percepção?
+              </p>
+              <div className="flex items-center gap-6 pt-2 text-slate-600">
+                <button className="flex items-center gap-2 text-xs hover:text-[#C9A66B] transition-colors font-bold uppercase tracking-tighter"><Heart size={16} /> 24</button>
+                <button className="flex items-center gap-2 text-xs hover:text-[#C9A66B] transition-colors font-bold uppercase tracking-tighter"><MessageSquare size={16} /> 8</button>
+                <button className="flex items-center gap-2 text-xs hover:text-[#C9A66B] transition-colors font-bold uppercase tracking-tighter"><Share2 size={16} /> Compartilhar</button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* --- BOTÕES DE ALTERNÂNCIA (SÓ PARA DISTRIBUIDOR) --- */}
-      {myProfile?.role === 'distribuidor' && (
-          <div className="flex p-1 bg-[#0A0A0A] border border-white/10 rounded-xl w-fit">
-              <button 
-                onClick={() => setViewMode('geral')}
-                className={`px-6 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${viewMode === 'geral' ? 'bg-[#C9A66B] text-black' : 'text-slate-500 hover:text-white'}`}
-              >
-                <Users size={16} /> Geral
-              </button>
-              <button 
-                onClick={() => setViewMode('distribuidores')}
-                className={`px-6 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${viewMode === 'distribuidores' ? 'bg-[#C9A66B] text-black' : 'text-slate-500 hover:text-white'}`}
-              >
-                <Briefcase size={16} /> Distribuidores
-              </button>
+      {/* --- RANKING TOP 10 (LADO DIREITO) --- */}
+      <div className="w-full lg:w-[350px] space-y-6">
+        <div className="bg-[#0A0A0A] border border-[#C9A66B]/10 rounded-3xl p-6 space-y-6">
+          <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+            <Trophy className="text-[#C9A66B]" size={20} />
+            <h2 className="text-sm font-black text-white italic uppercase tracking-widest">Top 10 Autoridade</h2>
           </div>
-      )}
 
-      {/* --- PODIUM (TOP 3 DA ABA ATUAL) --- */}
-      {top3.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {top3.map((member, index) => (
-                <div key={member.id} className={`relative p-1 rounded-2xl ${index === 0 ? 'bg-gradient-to-b from-[#C9A66B] to-black order-first md:order-2 md:-mt-6' : 'bg-white/10 md:order-last'}`}>
-                    <div className="bg-[#0A0A0A] h-full p-6 rounded-xl flex flex-col items-center text-center relative overflow-hidden">
-                        
-                        <div className={`mb-4 w-12 h-12 flex items-center justify-center rounded-full font-black text-lg ${index === 0 ? 'bg-[#C9A66B] text-black' : 'bg-white/10 text-white'}`}>
-                            {index + 1}º
-                        </div>
-
-                        <div className="w-20 h-20 rounded-full bg-white/5 border-2 border-white/10 flex items-center justify-center text-2xl font-bold text-slate-500 mb-3 uppercase relative">
-                            {member.full_name?.substring(0, 2) || "??"}
-                            <div className="absolute -bottom-1 -right-1 bg-black rounded-full p-1 border border-white/10">
-                                {member.role === 'distribuidor' ? <Briefcase size={12} className="text-[#C9A66B]" /> : <Scissors size={12} className="text-slate-400" />}
-                            </div>
-                        </div>
-
-                        <h3 className="text-white font-bold truncate w-full">{member.full_name}</h3>
-                        <p className="text-slate-500 text-xs mb-2 uppercase tracking-wider font-bold">
-                            {member.role === 'distribuidor' ? 'Distribuidor' : 'Profissional'}
-                        </p>
-                        <p className="text-[#C9A66B] font-black text-xl">{member.pro_balance || 0} PRO</p>
-                        
-                        <div className="flex gap-2 mt-4">
-                            {member.instagram && (
-                               <a href={`https://instagram.com/${member.instagram.replace('@','')}`} target="_blank" className="p-2 bg-white/5 hover:bg-[#C9A66B] hover:text-black rounded-lg transition-colors">
-                                  <Instagram size={16} />
-                               </a>
-                            )}
-                        </div>
-                    </div>
+          {/* OS 3 PRIMEIROS (DESTAQUE) */}
+          <div className="space-y-4">
+            {TOP_3.map((user, idx) => (
+              <div key={user.id} className={`p-4 rounded-2xl border ${idx === 0 ? 'bg-[#C9A66B] text-black border-none' : 'bg-white/5 border-white/5 text-white'}`}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className={`text-[10px] font-black uppercase ${idx === 0 ? 'text-black/60' : 'text-[#C9A66B]'}`}>#{idx + 1} LUGAR</span>
+                  <span className="text-[10px] font-black">{user.pro} PRO</span>
                 </div>
+                <p className="font-black italic uppercase tracking-tighter text-sm">{user.name}</p>
+                <div className="flex items-center justify-between mt-2">
+                  <span className={`text-[9px] font-bold flex items-center gap-1 opacity-70`}>
+                    <MapPin size={10} /> {user.cidade}
+                  </span>
+                  <a href="#" className="text-[9px] font-black flex items-center gap-1 underline italic">
+                    <Instagram size={10} /> {user.insta}
+                  </a>
+                </div>
+              </div>
             ))}
-        </div>
-      ) : (
-          <div className="text-center py-12 text-slate-500 bg-[#0A0A0A] rounded-2xl border border-white/5">
-              Nenhum membro encontrado nesta categoria.
           </div>
-      )}
 
-      {/* --- LISTA RESTANTE --- */}
-      {list.length > 0 && (
-        <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl overflow-hidden">
-            <div className="p-6 border-b border-white/10">
-                <h2 className="text-xl font-bold text-white">
-                    {viewMode === 'geral' ? "Lista de Profissionais" : "Outros Distribuidores"}
-                </h2>
-            </div>
-            
-            <div className="divide-y divide-white/5">
-                {list.map((member, i) => (
-                    <div key={member.id} className="p-4 flex items-center justify-between hover:bg-white/5 transition-colors group">
-                        <div className="flex items-center gap-4">
-                            <span className="text-slate-500 font-mono text-xs w-6 text-center">{i + 4}º</span>
-                            
-                            <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-slate-300 uppercase relative">
-                                {member.full_name?.substring(0, 2)}
-                                <div className="absolute -bottom-1 -right-1 bg-black rounded-full p-0.5 border border-white/10">
-                                    {member.role === 'distribuidor' ? <Briefcase size={8} className="text-[#C9A66B]" /> : <Scissors size={8} className="text-slate-400" />}
-                                </div>
-                            </div>
-                            
-                            <div>
-                                <p className="text-white font-bold text-sm">{member.full_name}</p>
-                                <div className="flex items-center gap-2">
-                                    <p className="text-[#C9A66B] text-xs font-bold">{member.pro_balance || 0} PRO</p>
-                                    <span className="text-slate-600 text-[10px]">•</span>
-                                    <p className="text-slate-500 text-[10px] uppercase font-bold">
-                                        {member.role === 'distribuidor' ? 'Distribuidor' : 'Profissional'}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            {member.instagram && (
-                                <a href={`https://instagram.com/${member.instagram.replace('@', '')}`} target="_blank" className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 text-slate-400 hover:text-[#C9A66B] hover:border-[#C9A66B] text-xs font-bold transition-all">
-                                    <Instagram size={14} />
-                                </a>
-                            )}
-                            {member.whatsapp && (
-                                <a href={`https://wa.me/55${member.whatsapp.replace(/\D/g, '')}`} target="_blank" className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 text-slate-400 hover:text-green-500 hover:border-green-500 text-xs font-bold transition-all">
-                                    <Phone size={14} />
-                                </a>
-                            )}
-                        </div>
-                    </div>
-                ))}
-            </div>
+          {/* OUTROS 7 (LISTA MINIMALISTA) */}
+          <div className="space-y-3 pt-4 border-t border-white/5">
+            {TOP_7.map((user) => (
+              <div key={user.rank} className="flex items-center justify-between px-2 text-[11px]">
+                <div className="flex items-center gap-3">
+                  <span className="text-slate-600 font-black w-4">{user.rank}</span>
+                  <div className="flex flex-col">
+                    <span className="text-slate-300 font-bold uppercase tracking-tight">{user.name}</span>
+                    <span className="text-slate-600 text-[9px] font-bold uppercase tracking-tighter">{user.cidade}</span>
+                  </div>
+                </div>
+                <span className="text-[#C9A66B] font-black opacity-50">{user.pro}</span>
+              </div>
+            ))}
+          </div>
         </div>
-      )}
+
+        {/* MENSAGEM DE MATURIDADE */}
+        <div className="p-4 bg-[#C9A66B]/5 border border-[#C9A66B]/10 rounded-2xl text-center">
+            <p className="text-[9px] text-[#C9A66B] font-black uppercase tracking-widest">Não é ranking de ego. É prova de entrega.</p>
+        </div>
+      </div>
+
     </div>
   );
 }
