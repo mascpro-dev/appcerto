@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { 
   PlayCircle, LayoutGrid, User, Trophy, Share2, 
   Map, ShoppingBag, Calendar, LogOut, ChevronDown 
@@ -10,9 +11,17 @@ import {
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const supabase = createClientComponentClient();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  // Itens que aparecem no Menu Suspenso (Celular) e na Sidebar (PC)
+  // Função para deslogar
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    router.refresh();
+    router.push("/login");
+  };
+
   const extraItems = [
     { name: "Jornada", href: "/jornada", icon: Map },
     { name: "Loja", href: "/loja", icon: ShoppingBag },
@@ -46,8 +55,11 @@ export default function Sidebar() {
                     <item.icon size={18} className="text-[#C9A66B]" /> {item.name.toUpperCase()}
                   </Link>
                 ))}
-                {/* BOTÃO SAIR NO CELULAR */}
-                <button className="flex items-center gap-3 px-4 py-4 text-xs font-bold text-red-500 hover:bg-red-500/10 transition-colors">
+                {/* BOTÃO SAIR NO CELULAR (DENTRO DO MENU SUSPENSO) */}
+                <button 
+                  onClick={handleSignOut}
+                  className="flex items-center gap-3 px-4 py-4 text-xs font-bold text-red-500 hover:bg-red-500/10 transition-colors text-left"
+                >
                   <LogOut size={18} /> SAIR DA CONTA
                 </button>
               </div>
@@ -60,11 +72,12 @@ export default function Sidebar() {
       <aside className="fixed left-0 top-0 h-full w-[260px] bg-[#050505] border-r border-white/5 hidden md:flex flex-col z-50">
         <div className="p-8">
           <h2 className="text-2xl font-black text-white italic tracking-tighter uppercase">Masc<span className="text-[#C9A66B]">Pro</span></h2>
+          <p className="text-[10px] text-slate-600 font-bold tracking-[0.2em] mt-1 italic">HUB EDUCACIONAL</p>
         </div>
 
         <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
           {[
-            { name: "Início", href: "/", icon: LayoutGrid },
+            { name: "Visão Geral", href: "/", icon: LayoutGrid },
             { name: "Evolução", href: "/evolucao", icon: PlayCircle },
             { name: "Rede", href: "/rede", icon: Share2 },
             { name: "Rank", href: "/comunidade", icon: Trophy },
@@ -84,9 +97,12 @@ export default function Sidebar() {
           ))}
         </nav>
 
-        {/* BOTÃO SAIR NO PC */}
+        {/* BOTÃO SAIR NO PC (RODAPÉ) */}
         <div className="p-6 border-t border-white/5">
-          <button className="flex items-center gap-3 px-4 py-3 w-full text-slate-500 font-bold text-xs hover:text-red-500 transition-colors uppercase tracking-widest">
+          <button 
+            onClick={handleSignOut}
+            className="flex items-center gap-3 px-4 py-3 w-full text-slate-500 font-bold text-xs hover:text-red-500 transition-colors uppercase tracking-widest"
+          >
             <LogOut size={18} /> Sair
           </button>
         </div>
@@ -103,7 +119,7 @@ export default function Sidebar() {
           <span className="text-[9px] font-bold uppercase">Aulas</span>
         </Link>
 
-        {/* PERFIL CENTRALIZADO */}
+        {/* PERFIL CENTRALIZADO - IDÊNTICO AO LAYOUT */}
         <div className="relative -top-6">
           <Link href="/perfil" className="w-14 h-14 bg-[#C9A66B] rounded-full border-[5px] border-black flex items-center justify-center text-black shadow-lg">
             <User size={24} fill="currentColor" />
