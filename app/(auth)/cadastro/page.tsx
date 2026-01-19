@@ -4,9 +4,8 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useState, Suspense } from "react"; 
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Loader2, Instagram, Phone, User, Lock, Mail, FileText, Briefcase, Scissors } from "lucide-react";
+import { Loader2, Instagram, Phone, User, Lock, Mail, FileText, Briefcase, Scissors, CheckCircle } from "lucide-react";
 
-// 1. O FORMULÁRIO FICA AQUI
 function CadastroForm() {
   const [formData, setFormData] = useState({
     fullName: "",
@@ -19,8 +18,8 @@ function CadastroForm() {
   });
   
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false); // Novo estado de sucesso
   const [error, setError] = useState("");
-  const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClientComponentClient();
   const refId = searchParams.get("ref");
@@ -62,6 +61,7 @@ function CadastroForm() {
           data: {
             full_name: formData.fullName,
             username: formData.instagram.replace("@", ""),
+            role: formData.role, // Tenta salvar direto nos metadados também
           },
         },
       });
@@ -69,17 +69,28 @@ function CadastroForm() {
       if (authError) throw authError;
 
       if (authData.user) {
-        // 2. Atualiza Perfil com a ROLE (Cabeleireiro ou Distribuidor)
-        await supabase.from("profiles").update({
+        // 2. FORÇA a atualização no perfil (Garante que a role fique certa)
+        // Usamos upsert para garantir que se o trigger for lento, nós criamos/atualizamos
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .update({
             instagram: formData.instagram,
             whatsapp: formData.whatsapp,
             cpf: formData.cpf,
-            role: formData.role, // <--- SALVA A ESCOLHA AQUI
+            role: formData.role, // <--- Aqui está o segredo
             invited_by: refId || null,
-          }).eq("id", authData.user.id);
+          })
+          .eq("id", authData.user.id);
+          
+         if (profileError) {
+             console.error("Erro ao atualizar perfil:", profileError);
+             // Não bloqueia o sucesso, mas loga o erro
+         }
       }
 
-      router.push("/");
+      // 3. Mostra a tela de sucesso (Confirmação de Email)
+      setSuccess(true);
+
     } catch (err: any) {
       setError(err.message || "Erro ao cadastrar.");
     } finally {
@@ -87,6 +98,30 @@ function CadastroForm() {
     }
   };
 
+  // --- TELA DE SUCESSO (Avisa do E-mail) ---
+  if (success) {
+      return (
+        <div className="w-full max-w-md bg-[#0A0A0A] p-8 rounded-2xl border border-white/10 text-center animate-in zoom-in duration-300">
+            <div className="mx-auto w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mb-6">
+                <CheckCircle size={32} className="text-green-500" />
+            </div>
+            <h2 className="text-2xl font-black text-white mb-2">Quase lá!</h2>
+            <p className="text-slate-400 mb-6">
+                Enviamos um link de confirmação para <strong>{formData.email}</strong>.
+                <br/><br/>
+                Clique no link do seu e-mail para ativar sua conta e acessar o painel.
+            </p>
+            <Link 
+                href="/login" 
+                className="block w-full bg-[#C9A66B] text-black font-bold py-4 rounded-xl hover:bg-[#b08d55] transition-all"
+            >
+                Ir para Login
+            </Link>
+        </div>
+      );
+  }
+
+  // --- FORMULÁRIO ---
   return (
     <div className="w-full max-w-md space-y-8 animate-in fade-in duration-500">
         <div className="text-center">
@@ -99,7 +134,7 @@ function CadastroForm() {
         <form onSubmit={handleSignUp} className="space-y-4 bg-[#0A0A0A] p-8 rounded-2xl border border-white/10">
           {error && <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 text-sm rounded-lg">{error}</div>}
 
-          {/* --- CAMPO DE ESCOLHA (ROLE) --- */}
+          {/* SELETOR DE PERFIL */}
           <div className="space-y-1">
             <label className="text-xs font-bold text-[#C9A66B] uppercase">Qual seu perfil?</label>
             <div className="relative">
@@ -119,7 +154,6 @@ function CadastroForm() {
                     <option value="distribuidor">Sou Distribuidor(a)</option>
                 </select>
                 
-                {/* Setinha customizada do select */}
                 <div className="absolute right-4 top-4 pointer-events-none">
                     <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                 </div>
@@ -128,7 +162,7 @@ function CadastroForm() {
 
           <div className="border-t border-white/10 my-4"></div>
 
-          {/* DADOS PESSOAIS */}
+          {/* CAMPOS PESSOAIS */}
           <div className="space-y-1">
             <label className="text-xs font-bold text-slate-500 uppercase">Nome Completo</label>
             <div className="relative"><User className="absolute left-3 top-3 text-slate-500" size={18} /><input name="fullName" required placeholder="Seu nome" className="w-full bg-black border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white focus:border-[#C9A66B] outline-none" onChange={handleChange} /></div>
