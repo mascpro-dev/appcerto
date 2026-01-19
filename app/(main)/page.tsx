@@ -4,14 +4,29 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useEffect, useState } from "react";
 import { Trophy } from "lucide-react";
 
+// OS 5 PILARES DO MANIFESTO (Cultura MASC PRO)
+const PILARES = [
+  "Performance que se mantém: Resultado que não ilude, fideliza.",
+  "Tecnologia + Método: Não vendemos produto. Sustentamos um sistema.",
+  "Experiência Premium: Visual, linguagem e entrega no mesmo nível.",
+  "Embaixadores como Escola: Educação contínua, indicação com responsabilidade.",
+  "Comunidade e Carreira: Crescimento profissional, não só resultado no cabelo."
+];
+
 export default function VisaoGeralPage() {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [dailyPillar, setDailyPillar] = useState(""); // Estado para a frase do dia
   const supabase = createClientComponentClient();
 
   useEffect(() => {
     async function getData() {
       try {
+        // 1. Sorteia um Pilar para exibir nesta sessão
+        const randomIndex = Math.floor(Math.random() * PILARES.length);
+        setDailyPillar(PILARES[randomIndex]);
+
+        // 2. Busca dados do usuário
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session) {
@@ -32,17 +47,21 @@ export default function VisaoGeralPage() {
     getData();
   }, [supabase]);
 
-  if (loading) return <div className="p-12 text-slate-500">Carregando painel...</div>;
+  if (loading) return <div className="p-12 text-slate-500">Carregando sistema...</div>;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       
-      {/* HEADER */}
+      {/* HEADER COM MANIFESTO CULTURAL */}
       <div>
         <h1 className="text-3xl font-black text-white tracking-tighter">
           Olá, {profile?.full_name?.split(' ')[0] || "Membro"}
         </h1>
-        <p className="text-slate-400 mt-1">Seu progresso é recompensado.</p>
+        
+        {/* AQUI ENTRA O PILAR (SUBSTITUI O TEXTO PADRÃO) */}
+        <p className="text-[#C9A66B]/80 mt-2 font-medium italic text-sm border-l-2 border-[#C9A66B] pl-3 py-1">
+          "{dailyPillar}"
+        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -89,6 +108,7 @@ export default function VisaoGeralPage() {
               </button>
           </div>
       </div>
+
     </div>
   );
 }
