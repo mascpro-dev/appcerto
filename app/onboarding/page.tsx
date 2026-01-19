@@ -68,22 +68,17 @@ export default function OnboardingPage() {
     setErrorMsg("");
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Sessão perdida.");
-
-      const { error } = await supabase
-        .from("profiles")
-        .update({ onboarding_completed: true })
-        .eq("id", session.user.id);
+      // MUDANÇA AQUI: Chamamos a função RPC (Blindada) em vez do update normal
+      const { error } = await supabase.rpc('complete_onboarding');
 
       if (error) throw error;
       
-      // MUDANÇA CRUCIAL: Força o recarregamento total da página
-      // Isso limpa o cache e garante que o Layout.tsx veja que agora é TRUE
+      // Força recarregamento total para limpar cache
       window.location.href = "/";
 
     } catch (err: any) {
-      setErrorMsg("Erro ao salvar. Tente atualizar a página.");
+      console.error(err);
+      setErrorMsg("Erro de conexão. Tente novamente.");
       setLoading(false);
     }
   };
