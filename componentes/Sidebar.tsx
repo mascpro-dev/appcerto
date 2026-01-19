@@ -3,13 +3,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
-  LayoutGrid, 
-  TrendingUp, // Evolução
-  Users,      // Rede
-  MessageCircle, // Comunidade
-  ShoppingBag, // Loja
-  Calendar,    // Agenda
-  UserCircle,  // Perfil
+  LayoutGrid,     // Início
+  PlayCircle,     // Aulas
+  User,           // Perfil
+  Trophy,         // Rank
+  Share2,         // Rede (Icone de compartilhamento/rede)
+  TrendingUp,     // Evolução (Desktop)
+  MessageCircle,  // Comunidade (Desktop)
+  ShoppingBag,    // Loja (Desktop)
+  Calendar,       // Eventos (Desktop)
   LogOut 
 } from "lucide-react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
@@ -25,25 +27,33 @@ export default function Sidebar() {
     router.push("/login");
   };
 
-  // LISTA COMPLETA DE LINKS (Igual ao seu print de Desktop)
-  const menuItems = [
+  // --- CONFIGURAÇÃO DO MENU DESKTOP (Completo) ---
+  const desktopItems = [
     { name: "Visão Geral", href: "/", icon: LayoutGrid },
-    { name: "Evolução", href: "/jornada", icon: TrendingUp },
-    { name: "Minha Rede", href: "/rede", icon: Users },
+    { name: "Evolução (Aulas)", href: "/jornada", icon: TrendingUp }, // Aulas aqui dentro
+    { name: "Minha Rede", href: "/rede", icon: Share2 },
     { name: "Comunidade", href: "/comunidade", icon: MessageCircle },
     { name: "Loja PRO", href: "/loja", icon: ShoppingBag },
     { name: "Eventos", href: "/agenda", icon: Calendar },
-    { name: "Meu Perfil", href: "/perfil", icon: UserCircle },
+    { name: "Meu Perfil", href: "/perfil", icon: User },
+  ];
+
+  // --- CONFIGURAÇÃO DO MENU MOBILE (Exatamente igual sua foto) ---
+  const mobileItems = [
+    { name: "Início", href: "/", icon: LayoutGrid },
+    { name: "Aulas", href: "/jornada", icon: PlayCircle }, // Linkamos Aulas para a Jornada
+    { name: "Perfil", href: "/perfil", icon: User, isFloating: true }, // O Dourado
+    { name: "Rank", href: "/ranking", icon: Trophy },
+    { name: "Rede", href: "/rede", icon: Share2 },
   ];
 
   return (
     <>
       {/* ==============================================================
-          🖥️ DESKTOP SIDEBAR (Fixo na esquerda, Fundo Preto)
+          🖥️ DESKTOP SIDEBAR (Fixo na esquerda - Preto)
       ============================================================== */}
       <aside className="hidden md:flex flex-col w-64 h-screen bg-black border-r border-white/10 fixed left-0 top-0 z-50">
         
-        {/* LOGO + SUBTITULO */}
         <div className="p-8 pb-4">
           <h1 className="text-2xl font-black text-white italic tracking-tighter">
             MASC <span className="text-[#C9A66B]">PRO</span>
@@ -51,9 +61,8 @@ export default function Sidebar() {
           <p className="text-[10px] text-slate-500 tracking-widest uppercase mt-1">Hub Educacional</p>
         </div>
 
-        {/* NAVEGAÇÃO */}
-        <nav className="flex-1 px-4 space-y-2 mt-4 overflow-y-auto">
-          {menuItems.map((item) => {
+        <nav className="flex-1 px-4 space-y-2 mt-4">
+          {desktopItems.map((item) => {
             const isActive = pathname === item.href;
             const Icon = item.icon;
             
@@ -75,7 +84,6 @@ export default function Sidebar() {
           })}
         </nav>
 
-        {/* BOTÃO SAIR */}
         <div className="p-6 border-t border-white/10">
           <button 
             onClick={handleLogout}
@@ -87,38 +95,47 @@ export default function Sidebar() {
         </div>
       </aside>
 
-      {/* ==============================================================
-          📱 MOBILE TOP BAR (Logo no topo)
-      ============================================================== */}
-      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-black z-50 flex items-center justify-center border-b border-white/10">
-        <h1 className="text-lg font-black text-white italic tracking-tighter">
-            MASC <span className="text-[#C9A66B]">PRO</span>
-        </h1>
-      </div>
 
       {/* ==============================================================
-          📱 MOBILE BOTTOM BAR (Navegação embaixo)
-          Focamos nos 5 principais ícones para caber na tela
+          📱 MOBILE BOTTOM BAR (O Visual do Print)
       ============================================================== */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 h-[70px] bg-black border-t border-white/10 z-50 flex justify-around items-center px-2 pb-2">
+      
+      {/* Barra preta fixa no fundo */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 h-[80px] bg-black border-t border-white/10 z-50 flex justify-between items-center px-6 pb-2">
         
-        {/* Usamos apenas os 5 itens principais para o mobile não quebrar */}
-        {[menuItems[0], menuItems[1], menuItems[6], menuItems[2], menuItems[4]].map((item, index) => {
+        {mobileItems.map((item) => {
              const isActive = pathname === item.href;
              const Icon = item.icon;
-             const isProfile = item.name === "Meu Perfil";
 
+             // SE FOR O BOTÃO DO MEIO (PERFIL) - FLUTUANTE DOURADO
+             if (item.isFloating) {
+               return (
+                 <div key={item.name} className="relative -top-8">
+                   <Link 
+                     href={item.href}
+                     className={`
+                        w-16 h-16 rounded-full flex items-center justify-center 
+                        bg-[#C9A66B] border-[6px] border-black shadow-[0_0_20px_rgba(201,166,107,0.4)]
+                        transition-transform active:scale-95
+                     `}
+                   >
+                     <Icon size={28} className="text-black" strokeWidth={2.5} />
+                   </Link>
+                 </div>
+               );
+             }
+
+             // ÍCONES NORMAIS (Início, Aulas, Rank, Rede)
              return (
                 <Link 
-                  key={item.href} 
+                  key={item.name} 
                   href={item.href}
-                  className={`flex flex-col items-center justify-center w-14 h-14 rounded-full transition-all
-                    ${isProfile && isActive ? "bg-[#C9A66B] text-black -mt-6 border-4 border-black shadow-lg shadow-[#C9A66B]/20" : ""}
-                    ${!isProfile && isActive ? "text-[#C9A66B]" : "text-slate-600"}
+                  className={`flex flex-col items-center gap-1 transition-colors
+                    ${isActive ? "text-[#C9A66B]" : "text-slate-500"}
                   `}
                 >
-                  <Icon size={isProfile ? 24 : 22} strokeWidth={isActive ? 2.5 : 2} />
-                  {!isProfile && <span className="text-[9px] mt-1 font-medium">{item.name.split(" ")[0]}</span>}
+                  <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
+                  <span className="text-[10px] font-bold">{item.name}</span>
                 </Link>
              );
         })}
