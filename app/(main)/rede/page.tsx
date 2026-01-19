@@ -1,92 +1,93 @@
 "use client";
 
-import { useState } from "react";
-import { Trophy, MessageSquare, Share2, Heart, Instagram, MapPin, Send } from "lucide-react";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { useEffect, useState } from "react";
+import { Copy, CheckCircle, TrendingUp, UserPlus, Users } from "lucide-react";
 
-const TOP_3 = [
-  { id: 1, name: "Ricardo Silva", cidade: "São Paulo/SP", pro: "2.450", insta: "@ricardo_hair" },
-  { id: 2, name: "Ana Beatriz", cidade: "Curitiba/PR", pro: "2.100", insta: "@ana_style" },
-  { id: 3, name: "Marcos Paulo", cidade: "Rio de Janeiro/RJ", pro: "1.980", insta: "@marcos_pro" },
-];
+export default function RedePage() {
+  const [indicados, setIndicados] = useState<any[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const supabase = createClientComponentClient();
 
-const TOP_7 = [
-  { rank: 4, name: "Julia Lins", cidade: "BH", pro: "1.850" },
-  { rank: 5, name: "Bruno Costa", cidade: "POA", pro: "1.720" },
-  { rank: 6, name: "Carla Dias", cidade: "REC", pro: "1.600" },
-  { rank: 7, name: "Vitor Hugo", cidade: "SSA", pro: "1.550" },
-  { rank: 8, name: "Sonia Abrão", cidade: "FLN", pro: "1.400" },
-  { rank: 9, name: "Pedro Vale", cidade: "BSB", pro: "1.320" },
-  { rank: 10, name: "Lana Rho", cidade: "MAO", pro: "1.200" },
-];
+  useEffect(() => {
+    async function getData() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setUserId(session.user.id);
+        // Busca membros onde o campo 'invited_by' é o ID do usuário logado
+        const { data } = await supabase
+          .from("profiles")
+          .select("full_name, created_at, status")
+          .eq('invited_by', session.user.id)
+          .order('created_at', { ascending: false });
+        if (data) setIndicados(data);
+      }
+    }
+    getData();
+  }, [supabase]);
 
-export default function ComunidadePage() {
-  const [post, setPost] = useState("");
+  // Link corrigido com HTTPS e rota /ref/
+  const inviteLink = userId 
+    ? `https://mascpro.app/ref/${userId}`
+    : "https://mascpro.app";
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(inviteLink);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8 animate-in fade-in duration-700 pb-24">
-      
-      {/* FEED ESTILO 'X' */}
-      <div className="flex-1 space-y-6">
-        <div className="border-b border-white/5 pb-4">
-          <h1 className="text-2xl font-black text-white italic uppercase tracking-tighter">
-            Comunidade <span className="text-[#C9A66B]">Masc Pro</span>
-          </h1>
-          <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Troca Real • Sem Julgamentos</p>
+    <div className="space-y-8 animate-in fade-in duration-500 pb-20">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div>
+          <h1 className="text-3xl font-black text-white italic uppercase tracking-tighter leading-none">Minha <span className="text-[#C9A66B]">Rede</span></h1>
+          <p className="text-slate-500 text-sm mt-1">Membros que entraram pelo seu link.</p>
         </div>
 
-        <div className="bg-[#0A0A0A] border border-white/5 rounded-2xl p-4 space-y-4">
-          <textarea 
-            value={post}
-            onChange={(e) => setPost(e.target.value)}
-            placeholder="Compartilhe uma evolução técnica ou dúvida com contexto..."
-            className="w-full bg-transparent border-none focus:ring-0 text-sm text-slate-300 placeholder:text-slate-600 resize-none h-24"
-          />
-          <div className="flex justify-between items-center border-t border-white/5 pt-4">
-            <span className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">
-              {"Participação > Aparência"}
-            </span>
-            <button className="bg-[#C9A66B] text-black px-4 py-2 rounded-lg text-xs font-black flex items-center gap-2 uppercase">
-              <Send size={14} /> Postar
-            </button>
+        <div className="flex items-center gap-2 p-1 rounded-xl border border-white/10 bg-[#0A0A0A]">
+          <div className="px-4 py-2">
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Convite Exclusivo</p>
+            <a href={inviteLink} target="_blank" rel="noopener noreferrer" className="text-xs text-white font-medium hover:text-[#C9A66B]">
+              {inviteLink}
+            </a>
           </div>
+          <button onClick={handleCopy} className="bg-transparent text-white px-6 py-3 rounded-lg font-black text-xs uppercase hover:bg-white/5 transition-all">
+            {copied ? "Copiado!" : "Copiar"}
+          </button>
         </div>
       </div>
 
-      {/* RANKING TOP 10 (LADO DIREITO) */}
-      <div className="w-full lg:w-[350px] space-y-6">
-        <div className="bg-[#0A0A0A] border border-[#C9A66B]/10 rounded-3xl p-6 space-y-6">
-          <div className="flex items-center gap-3 border-b border-white/5 pb-4">
-            <Trophy className="text-[#C9A66B]" size={20} />
-            <h2 className="text-sm font-black text-white italic uppercase tracking-widest">Top 10 Autoridade</h2>
-          </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-[#0A0A0A] border border-white/5 p-6 rounded-2xl flex items-center gap-5">
+          <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500"><UserPlus size={24} /></div>
+          <div><p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Total Indicados</p><p className="text-3xl font-black text-white">{indicados.length}</p></div>
+        </div>
+        <div className="bg-[#0A0A0A] border border-white/5 p-6 rounded-2xl flex items-center gap-5">
+          <div className="w-12 h-12 rounded-xl bg-[#C9A66B]/10 flex items-center justify-center text-[#C9A66B]"><TrendingUp size={24} /></div>
+          <div><p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">PROs de Indicação</p><p className="text-3xl font-black text-white">{indicados.length * 50} <span className="text-sm font-bold text-[#C9A66B]">PRO</span></p></div>
+        </div>
+      </div>
 
-          <div className="space-y-4">
-            {TOP_3.map((user, idx) => (
-              <div key={user.id} className={`p-4 rounded-2xl border ${idx === 0 ? 'bg-[#C9A66B] text-black' : 'bg-white/5 border-white/5'}`}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] font-black uppercase">#{idx + 1} LUGAR</span>
-                  <span className="text-[10px] font-black">{user.pro} PRO</span>
-                </div>
-                <p className="font-black italic uppercase tracking-tighter text-sm">{user.name}</p>
-                <div className="flex items-center justify-between mt-2 text-[9px] font-bold">
-                  <span className="flex items-center gap-1 opacity-70"><MapPin size={10} /> {user.cidade}</span>
-                  <span className="flex items-center gap-1 italic underline"><Instagram size={10} /> {user.insta}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="space-y-3 pt-4 border-t border-white/5">
-            {TOP_7.map((user) => (
-              <div key={user.rank} className="flex items-center justify-between px-2 text-[11px]">
-                <div className="flex items-center gap-3 text-slate-300">
-                  <span className="text-slate-600 font-black w-4">{user.rank}</span>
-                  <span className="font-bold uppercase tracking-tight">{user.name}</span>
-                </div>
-                <span className="text-[#C9A66B] font-black opacity-50">{user.pro}</span>
-              </div>
-            ))}
-          </div>
+      {/* Tabela de Membros para verificar se o cadastro computou */}
+      <div className="bg-[#0A0A0A] border border-white/5 rounded-2xl overflow-hidden">
+        <div className="p-6 border-b border-white/5"><h3 className="text-sm font-bold text-white uppercase tracking-widest">Membros Recentes</h3></div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-white/5 text-slate-500 uppercase text-[10px] font-bold">
+              <tr><th className="px-6 py-4">Nome</th><th className="px-6 py-4">Data</th><th className="px-6 py-4">Status</th></tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {indicados.map((item, i) => (
+                <tr key={i} className="text-slate-300">
+                  <td className="px-6 py-4 font-bold">{item.full_name || "Membro Masc"}</td>
+                  <td className="px-6 py-4">{new Date(item.created_at).toLocaleDateString('pt-BR')}</td>
+                  <td className="px-6 py-4"><span className="text-green-500 font-bold">Ativo</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

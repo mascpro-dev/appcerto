@@ -17,6 +17,7 @@ export default function DashboardPage() {
     getSession();
   }, [supabase]);
 
+  // Link com HTTPS e rota correta
   const inviteLink = `https://mascpro.app/ref/${userId || ""}`;
 
   const handleCopy = () => {
@@ -27,47 +28,46 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
-      {/* BOAS VINDAS */}
+      {/* Título de Boas-vindas */}
       <div>
         <h1 className="text-4xl font-black text-white italic uppercase tracking-tighter leading-none">
           Olá, <span className="text-[#C9A66B]">Membro Fundador</span>
         </h1>
-        <p className="text-slate-500 mt-2 font-medium">Seu progresso é recompensado.</p>
+        <p className="text-slate-500 mt-2 font-medium italic">Seu progresso é recompensado.</p>
       </div>
 
-      {/* CARD DE SALDO PRO */}
       <div className="grid md:grid-cols-2 gap-6">
-        <div className="bg-gradient-to-br from-[#0A0A0A] to-[#050505] border border-white/5 p-8 rounded-[32px] relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+        {/* Card de Saldo PRO */}
+        <div className="bg-[#0A0A0A] border border-white/5 p-8 rounded-[32px] relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-8 opacity-5">
             <Trophy size={120} />
           </div>
           <div className="relative z-10 space-y-6">
             <div className="flex items-center gap-2 bg-white/5 w-fit px-3 py-1 rounded-full border border-white/10">
-              <Wallet size={12} className="text-[#C9A66B]" />
-              <span className="text-[10px] font-black text-white uppercase tracking-widest">Masc Coin</span>
+              <span className="text-[10px] font-black text-white uppercase tracking-widest italic">Masc Coin</span>
             </div>
             <div>
-              <p className="text-6xl font-black text-white italic tracking-tighter">
-                1100 <span className="text-2xl text-[#C9A66B]">PRO</span>
+              <p className="text-6xl font-black text-white italic tracking-tighter leading-none">
+                1100 <span className="text-2xl text-[#C9A66B] uppercase">Pro</span>
               </p>
-              <p className="text-slate-500 text-xs mt-2 flex items-center gap-1">
-                <ArrowUpRight size={14} /> Seu poder de compra na loja.
+              <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mt-4 flex items-center gap-2">
+                <ArrowUpRight size={14} className="text-[#C9A66B]" /> Seu poder de compra na loja.
               </p>
             </div>
           </div>
         </div>
 
-        {/* PRÓXIMA PLACA */}
+        {/* Card de Próxima Placa */}
         <div className="bg-[#0A0A0A] border border-white/5 p-8 rounded-[32px] space-y-6">
           <div className="flex justify-between items-center">
-            <h3 className="text-sm font-black text-white uppercase tracking-widest italic">Próxima Placa</h3>
-            <span className="text-[10px] text-slate-500 font-bold uppercase">Marco de 10k</span>
+            <h3 className="text-xs font-black text-white uppercase tracking-widest italic text-slate-400">Próxima Placa</h3>
+            <span className="text-[10px] text-slate-600 font-bold uppercase">Marco de 10k</span>
           </div>
           <div className="space-y-4">
             <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-              <div className="h-full bg-[#C9A66B] w-[11%] shadow-[0_0_15px_rgba(201,166,107,0.4)]" />
+              <div className="h-full bg-[#C9A66B] w-[11%] shadow-[0_0_15px_rgba(201,166,107,0.3)]" />
             </div>
-            <div className="flex justify-between text-[10px] font-black text-slate-500 uppercase tracking-widest">
+            <div className="flex justify-between text-[10px] font-black text-slate-600 uppercase tracking-widest">
               <span>1100 PRO</span>
               <span>10.000 PRO</span>
             </div>
@@ -78,19 +78,25 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* CONVITE EXCLUSIVO */}
+      {/* Box de Convite Exclusivo */}
       <div className="bg-[#0A0A0A] border border-white/5 p-8 rounded-[32px] flex flex-col md:flex-row justify-between items-center gap-6">
-        <div>
-          <h3 className="font-black text-white italic uppercase tracking-tighter text-lg">Convite Exclusivo</h3>
-          <p className="text-slate-500 text-sm">Ganhe PROs convidando profissionais qualificados.</p>
+        <div className="flex items-center gap-4">
+           <div className="w-12 h-12 bg-[#C9A66B]/10 rounded-2xl flex items-center justify-center text-[#C9A66B]">
+              <ArrowUpRight size={24} />
+           </div>
+           <div>
+              <h3 className="font-black text-white italic uppercase tracking-tighter text-lg">Convite Exclusivo</h3>
+              <p className="text-slate-500 text-sm font-medium">Ganhe PROs convidando profissionais qualificados.</p>
+           </div>
         </div>
-        <div className="flex items-center gap-2 w-full md:w-auto">
-          <div className="flex-1 md:w-64 bg-black border border-white/10 px-4 py-3 rounded-xl text-xs text-slate-400 font-mono truncate">
+        
+        <div className="flex items-center gap-2 w-full md:w-auto bg-black p-1 rounded-2xl border border-white/5">
+          <div className="px-6 py-3 text-xs text-slate-400 font-mono truncate max-w-[200px]">
             {inviteLink}
           </div>
           <button 
             onClick={handleCopy}
-            className="bg-white text-black px-6 py-3 rounded-xl font-black text-xs uppercase hover:bg-[#C9A66B] transition-all whitespace-nowrap"
+            className="bg-white text-black px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[#C9A66B] transition-all"
           >
             {copied ? "Copiado!" : "Copiar"}
           </button>
