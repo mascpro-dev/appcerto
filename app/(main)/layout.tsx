@@ -19,11 +19,20 @@ export default function MainLayout({ children }: MainLayoutProps) {
     async function checkOnboarding() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        const { data: profile } = await supabase.from("profiles").select("onboarding_completed").eq("id", session.user.id).single();
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("onboarding_completed")
+          .eq("id", session.user.id)
+          .single();
+        
         if (profile && !profile.onboarding_completed && pathname !== "/onboarding") {
           router.push("/onboarding");
-        } else { setChecking(false); }
-      } else { setChecking(false); }
+        } else {
+          setChecking(false);
+        }
+      } else {
+        setChecking(false);
+      }
     }
     checkOnboarding();
   }, [supabase, router, pathname]);
@@ -34,7 +43,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
     <div className="min-h-screen bg-black text-white">
       <Sidebar />
       <main className="transition-all duration-300 w-full min-h-screen">
-        {/* pt-24 (96px) aplicado conforme solicitado para o mobile */}
+        {/* pt-24 (96px) para garantir que o nome não seja cortado no celular */}
         <div className="pt-24 pb-32 px-6 md:pt-12 md:pb-12 md:pl-[280px] max-w-[1600px] mx-auto">
           {children}
         </div>
