@@ -24,10 +24,6 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* ==============================================================
-          VISÃO DESKTOP (COMPUTADOR)
-          Só aparece em telas médias ou grandes (md:flex)
-      ============================================================== */}
       <aside className="hidden md:flex flex-col w-64 h-screen bg-[#0A0A0A] border-r border-white/10 fixed left-0 top-0 z-50">
         <div className="p-8">
           <h1 className="text-2xl font-black text-white italic tracking-tighter">
@@ -69,10 +65,43 @@ export default function Sidebar() {
         </div>
       </aside>
 
-      {/* ==============================================================
-          VISÃO MOBILE (CELULAR)
-          Só aparece em telas pequenas (md:hidden)
-      ============================================================== */}
-      
-      {/* 1. BARRA DO TOPO (LOGO) */}
-      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-black/90 backdrop-blur-md
+      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-black/90 backdrop-blur-md border-b border-white/10 z-50 flex items-center justify-center px-6">
+        <h1 className="text-xl font-black text-white italic tracking-tighter">
+            MASC <span className="text-[#C9A66B]">PRO</span>
+        </h1>
+      </div>
+
+      <div className="md:hidden fixed bottom-0 left-0 right-0 h-20 bg-[#0A0A0A] border-t border-white/10 z-50 px-6 pb-4 flex items-center justify-around">
+        {menuItems.map((item) => {
+          const isActive = pathname === item.href;
+          const Icon = item.icon;
+          
+          return (
+            <Link 
+              key={item.href} 
+              href={item.href}
+              className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all
+                ${isActive ? "text-[#C9A66B]" : "text-slate-500"}
+              `}
+            >
+              <div className={`p-1.5 rounded-full ${isActive ? "bg-[#C9A66B]/20" : "bg-transparent"}`}>
+                <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+              </div>
+              <span className="text-[10px] font-bold uppercase">{item.name}</span>
+            </Link>
+          );
+        })}
+
+        <button 
+            onClick={handleLogout}
+            className="flex flex-col items-center gap-1 p-2 text-slate-600 active:text-red-500"
+        >
+            <div className="p-1.5">
+                <LogOut size={22} />
+            </div>
+            <span className="text-[10px] font-bold uppercase">Sair</span>
+        </button>
+      </div>
+    </>
+  );
+}
