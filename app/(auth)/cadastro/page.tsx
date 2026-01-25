@@ -9,6 +9,8 @@ export default function CadastroPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  // Estado para os novos campos profissionais
+  const [workType, setWorkType] = useState("proprio");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -21,9 +23,10 @@ export default function CadastroPage() {
     setError(null);
 
     try {
-      // Captura o ID do indicador salvo pelo Layout
+      // 1. Captura o ID do indicador salvo pelo Layout no navegador
       const referrerId = typeof window !== "undefined" ? localStorage.getItem("masc_referrer") : null;
 
+      // 2. Realiza o cadastro enviando os dados completos para o banco
       const { error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -31,16 +34,20 @@ export default function CadastroPage() {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
           data: {
             full_name: fullName,
-            invited_by: referrerId, // Vincula à rede
-            coins: 50, // Moedas iniciais
+            work_type: workType, // Salva se é salão próprio, cadeira ou comissão
+            invited_by: referrerId, // Vincula à rede de quem indicou
+            coins: 50, // Garante os 50 PRO iniciais
             onboarding_completed: false
           },
         },
       });
 
       if (signUpError) throw signUpError;
+      
+      // 3. Limpa o indicador do navegador após o sucesso
       if (referrerId) localStorage.removeItem("masc_referrer");
 
+      // 4. Redireciona para o onboarding do novo usuário
       router.push("/onboarding");
     } catch (err: any) {
       setError(err.message);
@@ -56,7 +63,7 @@ export default function CadastroPage() {
           <h1 className="text-4xl font-black italic uppercase tracking-tighter">
             MASC<span className="text-[#C9A66B]">PRO</span>
           </h1>
-          <p className="text-slate-500 mt-2 font-medium">Crie sua conta profissional.</p>
+          <p className="text-slate-500 mt-2 font-medium italic">Crie sua conta profissional.</p>
         </div>
 
         <form onSubmit={handleSignUp} className="mt-8 space-y-4">
@@ -70,16 +77,30 @@ export default function CadastroPage() {
             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Nome Completo</label>
             <input
               type="text" required value={fullName} onChange={(e) => setFullName(e.target.value)}
-              className="w-full bg-[#0A0A0A] border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-[#C9A66B] transition-all"
+              className="w-full bg-[#0A0A0A] border border-white/10 rounded-2xl px-6 py-4 text-white placeholder:text-slate-800 focus:outline-none focus:border-[#C9A66B] transition-all"
               placeholder="Seu nome"
             />
+          </div>
+
+          {/* NOVOS CAMPOS: Atuação Profissional */}
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Atuação Profissional</label>
+            <select 
+              value={workType}
+              onChange={(e) => setWorkType(e.target.value)}
+              className="w-full bg-[#0A0A0A] border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-[#C9A66B] transition-all appearance-none cursor-pointer"
+            >
+              <option value="proprio">Possuo Salão Próprio</option>
+              <option value="aluguel">Alugo Cadeira</option>
+              <option value="comissao">Trabalho por Comissão</option>
+            </select>
           </div>
 
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">E-mail</label>
             <input
               type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-[#0A0A0A] border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-[#C9A66B] transition-all"
+              className="w-full bg-[#0A0A0A] border border-white/10 rounded-2xl px-6 py-4 text-white placeholder:text-slate-800 focus:outline-none focus:border-[#C9A66B] transition-all"
               placeholder="seu@email.com"
             />
           </div>
@@ -88,7 +109,7 @@ export default function CadastroPage() {
             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Senha</label>
             <input
               type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-[#0A0A0A] border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-[#C9A66B] transition-all"
+              className="w-full bg-[#0A0A0A] border border-white/10 rounded-2xl px-6 py-4 text-white placeholder:text-slate-800 focus:outline-none focus:border-[#C9A66B] transition-all"
               placeholder="••••••••"
             />
           </div>
@@ -97,7 +118,7 @@ export default function CadastroPage() {
             type="submit" disabled={loading}
             className="w-full bg-[#C9A66B] text-black font-black py-5 rounded-2xl uppercase tracking-widest text-sm hover:opacity-90 transition-all disabled:opacity-50 mt-4"
           >
-            {loading ? "Processando..." : "Criar Conta"}
+            {loading ? "Processando..." : "Finalizar Cadastro"}
           </button>
         </form>
 
