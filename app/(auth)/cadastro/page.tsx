@@ -21,10 +21,9 @@ export default function CadastroPage() {
     setError(null);
 
     try {
-      // 1. Busca o ID do indicador salvo pelo Layout
+      // Captura o ID do indicador salvo pelo Layout
       const referrerId = typeof window !== "undefined" ? localStorage.getItem("masc_referrer") : null;
 
-      // 2. Realiza o cadastro enviando os metadados necessários
       const { error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -32,18 +31,14 @@ export default function CadastroPage() {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
           data: {
             full_name: fullName,
-            // VINCULA À REDE E RANKING
-            invited_by: referrerId,
-            // ATRIBUI AS MOEDAS PRO INICIAIS
-            coins: 50,
+            invited_by: referrerId, // Vincula à rede
+            coins: 50, // Moedas iniciais
             onboarding_completed: false
           },
         },
       });
 
       if (signUpError) throw signUpError;
-
-      // 3. Limpa o registro de indicação após o sucesso
       if (referrerId) localStorage.removeItem("masc_referrer");
 
       router.push("/onboarding");
@@ -61,7 +56,7 @@ export default function CadastroPage() {
           <h1 className="text-4xl font-black italic uppercase tracking-tighter">
             MASC<span className="text-[#C9A66B]">PRO</span>
           </h1>
-          <p className="text-slate-500 mt-2 font-medium">Crie sua conta e comece sua jornada.</p>
+          <p className="text-slate-500 mt-2 font-medium">Crie sua conta profissional.</p>
         </div>
 
         <form onSubmit={handleSignUp} className="mt-8 space-y-4">
@@ -74,23 +69,17 @@ export default function CadastroPage() {
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Nome Completo</label>
             <input
-              type="text"
-              required
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              className="w-full bg-[#0A0A0A] border border-white/10 rounded-2xl px-6 py-4 text-white placeholder:text-slate-700 focus:outline-none focus:border-[#C9A66B] transition-all"
-              placeholder="Seu nome completo"
+              type="text" required value={fullName} onChange={(e) => setFullName(e.target.value)}
+              className="w-full bg-[#0A0A0A] border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-[#C9A66B] transition-all"
+              placeholder="Seu nome"
             />
           </div>
 
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">E-mail</label>
             <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-[#0A0A0A] border border-white/10 rounded-2xl px-6 py-4 text-white placeholder:text-slate-700 focus:outline-none focus:border-[#C9A66B] transition-all"
+              type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+              className="w-full bg-[#0A0A0A] border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-[#C9A66B] transition-all"
               placeholder="seu@email.com"
             />
           </div>
@@ -98,29 +87,22 @@ export default function CadastroPage() {
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Senha</label>
             <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-[#0A0A0A] border border-white/10 rounded-2xl px-6 py-4 text-white placeholder:text-slate-700 focus:outline-none focus:border-[#C9A66B] transition-all"
+              type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
+              className="w-full bg-[#0A0A0A] border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-[#C9A66B] transition-all"
               placeholder="••••••••"
             />
           </div>
 
           <button
-            type="submit"
-            disabled={loading}
+            type="submit" disabled={loading}
             className="w-full bg-[#C9A66B] text-black font-black py-5 rounded-2xl uppercase tracking-widest text-sm hover:opacity-90 transition-all disabled:opacity-50 mt-4"
           >
-            {loading ? "Processando..." : "Criar Conta Agora"}
+            {loading ? "Processando..." : "Criar Conta"}
           </button>
         </form>
 
         <p className="text-center text-slate-500 text-sm mt-8">
-          Já tem uma conta?{" "}
-          <Link href="/login" className="text-[#C9A66B] font-bold hover:underline">
-            Fazer login
-          </Link>
+          Já tem conta? <Link href="/login" className="text-[#C9A66B] font-bold hover:underline">Login</Link>
         </p>
       </div>
     </div>
