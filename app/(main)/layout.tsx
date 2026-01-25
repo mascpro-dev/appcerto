@@ -16,21 +16,17 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    // --- BLOCO DE CAPTURA SILENCIOSA DO INDICADOR ---
-    // Captura o parâmetro da URL se ele existir (?ref=...)
+    // LOGICA DE AFILIADO: Captura o ID da URL e salva no navegador
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const refId = params.get("ref");
       
       if (refId) {
-        // Salva na memória do navegador para o momento do cadastro
         localStorage.setItem("masc_referrer", refId);
-        
-        // Limpa a URL para ficar elegante sem o código visível
+        // Limpa a URL para ficar profissional
         window.history.replaceState({}, '', window.location.pathname);
       }
     }
-    // -----------------------------------------------
 
     async function checkOnboarding() {
       const { data: { session } } = await supabase.auth.getSession();
@@ -59,7 +55,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
     <div className="min-h-screen bg-black text-white">
       <Sidebar />
       <main className="transition-all duration-300 w-full min-h-screen">
-        {/* pt-24 (96px) mantido para garantir que o nome não seja cortado no celular */}
         <div className="pt-24 pb-32 px-6 md:pt-12 md:pb-12 md:pl-[280px] max-w-[1600px] mx-auto">
           {children}
         </div>
