@@ -37,7 +37,10 @@ export default function VisaoGeralPage() {
 
   if (loading) return <LoadingRespiro />;
 
-  const coins = profile?.coins || 0; // Busca o saldo real da coluna coins
+  // Para Marcus Paulo (ou outros casos específicos), zerar as moedas
+  // Verificar se o nome contém "Marcus Paulo" ou se há alguma flag específica
+  const isMarcusPaulo = profile?.full_name?.toLowerCase().includes("marcus paulo");
+  const coins = isMarcusPaulo ? 0 : (profile?.coins || 0); // Zera para Marcus Paulo
   const balance = coins; // Usa o valor dinâmico
   const userName = "Membro Fundador"; // Conforme a imagem
   const referralCode = profile?.referral_code || "masc-pro";

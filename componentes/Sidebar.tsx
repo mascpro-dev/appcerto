@@ -16,6 +16,7 @@ import {
   Share2,
   MoreVertical,
   Award,
+  CheckCircle,
   type LucideIcon
 } from "lucide-react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
@@ -44,27 +45,18 @@ const DROPDOWN_ITEMS: NavItem[] = [
   { icon: Calendar, label: "Eventos", href: "/eventos" },
 ];
 
-// Função para obter itens do menu (inclui Jornada apenas para embaixadores)
-const getMenuItems = (isEmbaixador: boolean) => {
-  const baseItems = [
+// Função para obter itens do menu (Jornada disponível para todos)
+const getMenuItems = () => {
+  return [
     { icon: LayoutDashboard, label: "Visão Geral", href: "/" },
     { icon: GraduationCap, label: "Evolução", href: "/evolucao" },
     { icon: Users, label: "Minha Rede", href: "/rede" },
     { icon: MessageSquare, label: "Comunidade", href: "/comunidade" },
-  ];
-
-  // Adiciona Jornada apenas para embaixadores
-  if (isEmbaixador) {
-    baseItems.push({ icon: Award, label: "Minha Jornada", href: "/jornada" });
-  }
-
-  baseItems.push(
+    { icon: Award, label: "Minha Jornada", href: "/jornada" },
     { icon: ShoppingBag, label: "Loja PRO", href: "/loja" },
     { icon: Calendar, label: "Eventos", href: "/eventos" },
     { icon: User, label: "Meu Perfil", href: "/perfil" }
-  );
-
-  return baseItems;
+  ];
 };
 
 export default function Sidebar() {
@@ -75,35 +67,89 @@ export default function Sidebar() {
   const [loggingOut, setLoggingOut] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [isEmbaixador, setIsEmbaixador] = useState(false);
+  const [userProfile, setUserProfile] = useState<any>(null);
 
-  // Verificar se o usuário é embaixador
+  // Carregar perfil do usuário
   useEffect(() => {
-    async function checkEmbaixador() {
+    async function loadUserProfile() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         const { data: profile } = await supabase
           .from("profiles")
-          .select("role, work_type")
+          .select("full_name, role, work_type, specialty")
           .eq("id", session.user.id)
           .single();
+        
+        setUserProfile(profile);
         
         // Verifica se é embaixador (pode ser role === "embaixador" ou work_type === "embaixador")
         const embaixador = profile?.role === "embaixador" || profile?.work_type === "embaixador" || profile?.role === "EMBAIXADOR" || profile?.work_type === "EMBAIXADOR";
         setIsEmbaixador(embaixador || false);
       }
     }
-    checkEmbaixador();
+    loadUserProfile();
   }, [supabase]);
 
-  const handleLogout = async () => {
+  // Verificar se é Distribuidor
+  const isDistribuidor = userProfile?.work_type === "Distribuidor" || 
+                         userProfile?.work_type === "distribuidor" ||
+                         userProfile?.role === "Distribuidor" || 
+                         userProfile?.role === "distribuidor";
+
+  // Função para obter o cargo do usuário
+  const getUserRole = () => {
+    if (!userProfile) return "";
+    
+    if (isDistribuidor) {
+      return "DISTRIBUIDOR AUTORIZADO";
+    }
+    
+    // Verificar specialty para outros cargos
+    if (userProfile.specialty) {
+      const specialties: { [key: string]: string } = {
+        cabeleireiro: "CABELEIREIRO",
+        barbeiro: "BARBEIRO",
+        esteticista: "ESTETICISTA",
+        manicure: "MANICURE",
+        outro: "PROFISSIONAL",
+      };
+      return specialties[userProfile.specialty] || "PROFISSIONAL";
+    }
+    
+    return "PROFISSIONAL";
+  };
+
+  const handleLogout = async (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    
     try {
       setLoggingOut(true);
-      await supabase.auth.signOut();
-      router.push("/login");
-      router.refresh();
+      
+      // Fazer logout no Supabase
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error("Erro ao sair", error);
+        setLoggingOut(false);
+        alert("Erro ao fazer logout. Tente novamente.");
+        return;
+      }
+      
+      // Limpar dados locais
+      if (typeof window !== "undefined") {
+        localStorage.clear();
+        sessionStorage.clear();
+      }
+      
+      // Redirecionar para login usando window.location para garantir limpeza completa
+      if (typeof window !== "undefined") {
+        window.location.href = "/login";
+      }
     } catch (error) {
       console.error("Erro ao sair", error);
       setLoggingOut(false);
+      alert("Erro ao fazer logout. Tente novamente.");
     }
   };
 
@@ -159,29 +205,28 @@ export default function Sidebar() {
                     <span className="font-medium">{item.label}</span>
                   </Link>
                 ))}
-                {/* Adiciona Jornada no dropdown apenas para embaixadores */}
-                {isEmbaixador && (
-                  <Link
-                    href="/jornada"
-                    onClick={() => setDropdownOpen(false)}
-                    className={`flex items-center gap-3 px-4 py-3 text-sm transition-colors ${
-                      pathname === "/jornada"
-                        ? "bg-white/5 text-white"
-                        : "text-slate-400 hover:text-white hover:bg-white/5"
-                    }`}
-                  >
-                    <Award size={18} className={pathname === "/jornada" ? "text-[#C9A66B]" : "text-slate-500"} />
-                    <span className="font-medium">Minha Jornada</span>
-                  </Link>
-                )}
+                {/* Adiciona Jornada no dropdown para todos */}
+                <Link
+                  href="/jornada"
+                  onClick={() => setDropdownOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-3 text-sm transition-colors ${
+                    pathname === "/jornada"
+                      ? "bg-white/5 text-white"
+                      : "text-slate-400 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <Award size={18} className={pathname === "/jornada" ? "text-[#C9A66B]" : "text-slate-500"} />
+                  <span className="font-medium">Minha Jornada</span>
+                </Link>
                 <div className="border-t border-white/5 mt-2 pt-2">
                   <button
-                    onClick={handleLogout}
+                    onClick={(e) => handleLogout(e)}
                     disabled={loggingOut}
-                    className="flex items-center gap-3 px-4 py-3 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 w-full transition-colors"
+                    type="button"
+                    className="flex items-center gap-3 px-4 py-3 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 w-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <LogOut size={18} className="text-red-400" />
-                    <span className="font-medium">Sair do App</span>
+                    <span className="font-medium">{loggingOut ? "Saindo..." : "Sair do App"}</span>
                   </button>
                 </div>
               </div>
@@ -256,8 +301,27 @@ export default function Sidebar() {
             </div>
           </div>
 
+          {/* Perfil do Usuário */}
+          {userProfile && (
+            <div className="mb-8 pb-8 border-b border-white/5">
+              <div className="flex items-center gap-2 mb-2">
+                <h3 className="text-sm font-black text-white truncate">
+                  {userProfile.full_name || "Usuário"}
+                </h3>
+                {isDistribuidor && (
+                  <CheckCircle size={16} className="text-[#FFD700] flex-shrink-0" />
+                )}
+              </div>
+              <p className={`text-[10px] font-bold uppercase tracking-widest ${
+                isDistribuidor ? "text-[#FFD700]" : "text-slate-500"
+              }`}>
+                {getUserRole()}
+              </p>
+            </div>
+          )}
+
           <nav className="space-y-2">
-            {getMenuItems(isEmbaixador).map((item) => {
+            {getMenuItems().map((item) => {
               const isActive = pathname === item.href;
               return (
                 <Link
@@ -280,12 +344,15 @@ export default function Sidebar() {
         {/* BOTÃO SAIR NO RODAPÉ DA SIDEBAR */}
         <div className="mt-auto p-6 border-t border-white/5">
           <button 
-            onClick={handleLogout}
+            onClick={(e) => handleLogout(e)}
             disabled={loggingOut}
-            className="flex items-center gap-4 px-4 py-4 rounded-2xl transition-all duration-300 text-red-400 hover:text-red-300 hover:bg-red-500/10 w-full group"
+            type="button"
+            className="flex items-center gap-4 px-4 py-4 rounded-2xl transition-all duration-300 text-red-400 hover:text-red-300 hover:bg-red-500/10 w-full group disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <LogOut size={20} className="text-red-400 group-hover:text-red-300" />
-            <span className="text-xs uppercase tracking-widest font-bold">SAIR</span>
+            <span className="text-xs uppercase tracking-widest font-bold">
+              {loggingOut ? "Saindo..." : "SAIR"}
+            </span>
           </button>
         </div>
       </aside>

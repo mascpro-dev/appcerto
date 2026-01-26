@@ -2,7 +2,7 @@
 
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useEffect, useState, useRef } from "react";
-import { User, MapPin, Briefcase, Scissors, Edit, ShieldCheck, Phone, Home, Save, X, Loader2 } from "lucide-react";
+import { User, MapPin, Briefcase, Scissors, Edit, ShieldCheck, Phone, Home, Save, X, Loader2, CheckCircle } from "lucide-react";
 
 export default function PerfilPage() {
   const [profile, setProfile] = useState<any>(null);
@@ -217,7 +217,32 @@ export default function PerfilPage() {
 
   if (loading) return <div className="p-12 text-slate-500">Carregando perfil...</div>;
 
-  const isDistribuidor = profile?.role === 'distribuidor';
+  const isDistribuidor = profile?.work_type === "Distribuidor" || 
+                         profile?.work_type === "distribuidor" ||
+                         profile?.role === "Distribuidor" || 
+                         profile?.role === "distribuidor";
+
+  // Função para obter o cargo do usuário
+  const getUserRole = () => {
+    if (!profile) return "";
+    if (isDistribuidor) {
+      return "DISTRIBUIDOR AUTORIZADO";
+    }
+    
+    // Verificar specialty para outros cargos
+    if (profile.specialty) {
+      const specialties: { [key: string]: string } = {
+        cabeleireiro: "CABELEIREIRO",
+        barbeiro: "BARBEIRO",
+        esteticista: "ESTETICISTA",
+        manicure: "MANICURE",
+        outro: "PROFISSIONAL",
+      };
+      return specialties[profile.specialty] || "PROFISSIONAL";
+    }
+    
+    return "PROFISSIONAL";
+  };
   
   // Lógica inteligente para o endereço
   const enderecoCompleto = [profile?.city, profile?.state].filter(Boolean).join(" - ");
@@ -268,14 +293,21 @@ export default function PerfilPage() {
                     </div>
                   )}
 
-                  <h2 className="text-4xl font-black text-white tracking-tighter">
-                      {profile?.full_name || "Usuário"}
-                  </h2>
+                  <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
+                      <h2 className="text-4xl font-black text-white tracking-tighter">
+                          {profile?.full_name || "Usuário"}
+                      </h2>
+                      {isDistribuidor && (
+                          <CheckCircle size={24} className="text-[#FFD700] flex-shrink-0" />
+                      )}
+                  </div>
 
-                  <div className="flex items-center justify-center md:justify-start gap-2 text-slate-400 font-medium">
-                      {isDistribuidor ? <Briefcase size={16} className="text-[#C9A66B]"/> : <Scissors size={16} className="text-slate-400"/>}
+                  <div className={`flex items-center justify-center md:justify-start gap-2 font-bold uppercase tracking-widest text-[10px] ${
+                      isDistribuidor ? "text-[#FFD700]" : "text-slate-400"
+                  }`}>
+                      {isDistribuidor ? <Briefcase size={14} className="text-[#FFD700]"/> : <Scissors size={14} className="text-slate-400"/>}
                       <span>
-                          {isDistribuidor ? "Distribuidor Autorizado" : "Cabeleireiro Profissional"}
+                          {getUserRole()}
                       </span>
                   </div>
 

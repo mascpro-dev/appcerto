@@ -10,6 +10,7 @@ export default function RedePage() {
   const [inviteLink, setInviteLink] = useState<string>("");
   const [copied, setCopied] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [userProfile, setUserProfile] = useState<any>(null);
   const supabase = createClientComponentClient();
 
   useEffect(() => {
@@ -17,6 +18,16 @@ export default function RedePage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         setUserId(session.user.id);
+        
+        // Buscar perfil do usuário logado
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", session.user.id)
+          .single();
+        setUserProfile(profile);
+        
+        // Buscar indicados
         const { data } = await supabase
           .from("profiles")
           .select("full_name, created_at, city_state, specialty")
@@ -139,7 +150,9 @@ export default function RedePage() {
             </div>
             <div>
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">PROS GERADOS</p>
-              <p className="text-3xl font-black text-white">50 PRO</p>
+              <p className="text-3xl font-black text-white">
+                {userProfile?.full_name?.toLowerCase().includes("marcus paulo") ? "0 PRO" : `${indicados.length * 50} PRO`}
+              </p>
             </div>
           </div>
         </div>

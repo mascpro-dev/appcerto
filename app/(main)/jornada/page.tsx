@@ -1,6 +1,6 @@
 "use client";
 
-import { Shield, Star, Award, GraduationCap, Lock, CheckCircle } from "lucide-react";
+import { Shield, Star, Award, GraduationCap, Lock, CheckCircle, Mail } from "lucide-react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -10,9 +10,10 @@ export default function JornadaPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [isEmbaixador, setIsEmbaixador] = useState(false);
+  const [requestSent, setRequestSent] = useState(false);
 
   useEffect(() => {
-    async function checkEmbaixador() {
+    async function checkUser() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         const { data: profile } = await supabase
@@ -26,18 +27,28 @@ export default function JornadaPage() {
                           profile?.role === "EMBAIXADOR" || profile?.work_type === "EMBAIXADOR";
         
         setIsEmbaixador(embaixador || false);
-        
-        // Se não for embaixador, redireciona
-        if (!embaixador) {
-          router.push("/");
-        }
       } else {
         router.push("/login");
       }
       setLoading(false);
     }
-    checkEmbaixador();
+    checkUser();
   }, [supabase, router]);
+
+  const handleRequestEmbaixador = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      // Aqui você pode adicionar lógica para salvar a solicitação no banco de dados
+      // Por exemplo, criar uma tabela de solicitações ou enviar um email
+      setRequestSent(true);
+      
+      // Exemplo: salvar solicitação (descomente se tiver uma tabela para isso)
+      // await supabase.from("embaixador_requests").insert({
+      //   user_id: session.user.id,
+      //   status: "pending"
+      // });
+    }
+  };
 
   if (loading) {
     return (
@@ -45,10 +56,6 @@ export default function JornadaPage() {
         <div className="text-white/60">Carregando...</div>
       </div>
     );
-  }
-
-  if (!isEmbaixador) {
-    return null;
   }
 
   return (
@@ -66,30 +73,56 @@ export default function JornadaPage() {
 
       {/* SEÇÃO 1: LISTA DE PROGRESSO (VERTICAL) */}
       <div className="space-y-4">
-        {/* CERTIFIED - Ativo/Dourado */}
-        <div className="bg-[#111] border border-white/10 rounded-xl p-5 flex items-center justify-between">
+        {/* CERTIFIED */}
+        <div className={`bg-[#111] border rounded-xl p-5 flex items-center justify-between ${
+          isEmbaixador 
+            ? "border-white/10" 
+            : "border-white/5 opacity-60"
+        }`}>
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-lg bg-[#C9A66B] text-black flex items-center justify-center">
+            <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+              isEmbaixador 
+                ? "bg-[#C9A66B] text-black" 
+                : "bg-zinc-900 text-zinc-600"
+            }`}>
               <Shield size={24} />
             </div>
             <div>
-              <h3 className="font-black text-white text-lg uppercase tracking-tight">CERTIFIED</h3>
-              <p className="text-xs text-white/60 mt-1">Fundação técnica e cultural.</p>
+              <h3 className={`font-black text-lg uppercase tracking-tight ${
+                isEmbaixador ? "text-white" : "text-zinc-600"
+              }`}>CERTIFIED</h3>
+              <p className={`text-xs mt-1 ${
+                isEmbaixador ? "text-white/60" : "text-zinc-700"
+              }`}>Fundação técnica e cultural.</p>
             </div>
           </div>
+          {!isEmbaixador && <Lock size={20} className="text-zinc-700" />}
         </div>
 
-        {/* EXPERT - Ativo/Branco */}
-        <div className="bg-[#111] border border-white/10 rounded-xl p-5 flex items-center justify-between">
+        {/* EXPERT */}
+        <div className={`bg-[#111] border rounded-xl p-5 flex items-center justify-between ${
+          isEmbaixador 
+            ? "border-white/10" 
+            : "border-white/5 opacity-60"
+        }`}>
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-lg bg-white text-black flex items-center justify-center">
+            <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+              isEmbaixador 
+                ? "bg-white text-black" 
+                : "bg-zinc-900 text-zinc-600"
+            }`}>
               <Star size={24} />
             </div>
             <div>
-              <h3 className="font-black text-white text-lg uppercase tracking-tight">EXPERT</h3>
-              <p className="text-xs text-white/60 mt-1">Domínio avançado.</p>
+              <h3 className={`font-black text-lg uppercase tracking-tight ${
+                isEmbaixador ? "text-white" : "text-zinc-600"
+              }`}>EXPERT</h3>
+              <p className={`text-xs mt-1 ${
+                isEmbaixador ? "text-white/60" : "text-zinc-700"
+              }`}>Domínio avançado.</p>
             </div>
           </div>
+          {!isEmbaixador && <Lock size={20} className="text-zinc-700" />}
         </div>
 
         {/* MASTER TÉCNICO - Bloqueado */}
@@ -120,6 +153,46 @@ export default function JornadaPage() {
           <Lock size={20} className="text-zinc-700" />
         </div>
       </div>
+
+      {/* BOTÃO PARA SOLICITAR SER EMBAIXADOR (apenas para cabeleireiros) */}
+      {!isEmbaixador && (
+        <div className="bg-[#111] border border-[#C9A66B]/20 rounded-xl p-6 space-y-4">
+          <div className="text-center space-y-2">
+            <h3 className="text-lg font-black text-white uppercase tracking-tight">
+              Torne-se um Embaixador
+            </h3>
+            <p className="text-sm text-white/60">
+              Solicite um convite para se tornar um Embaixador MASC PRO e desbloqueie sua jornada completa.
+            </p>
+          </div>
+          <button
+            onClick={handleRequestEmbaixador}
+            disabled={requestSent}
+            className={`w-full py-4 rounded-xl font-black uppercase tracking-wider transition-all ${
+              requestSent
+                ? "bg-[#C9A66B]/30 text-[#C9A66B] cursor-not-allowed"
+                : "bg-[#C9A66B] text-black hover:bg-[#C9A66B]/90 active:scale-95"
+            }`}
+          >
+            {requestSent ? (
+              <span className="flex items-center justify-center gap-2">
+                <Mail size={18} />
+                Solicitação Enviada
+              </span>
+            ) : (
+              <span className="flex items-center justify-center gap-2">
+                <Mail size={18} />
+                Solicitar Convite para Embaixador
+              </span>
+            )}
+          </button>
+          {requestSent && (
+            <p className="text-xs text-center text-white/50">
+              Sua solicitação foi enviada. Aguarde o contato da equipe MASC PRO.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* SEÇÃO 2: INTELIGÊNCIA PRO */}
       <div className="space-y-6">
