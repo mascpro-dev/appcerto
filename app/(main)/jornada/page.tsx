@@ -1,8 +1,56 @@
 "use client";
 
 import { Shield, Star, Award, GraduationCap, Lock, Target, Users, ShoppingCart, ShieldCheck } from "lucide-react";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function JornadaPage() {
+  const supabase = createClientComponentClient();
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [isEmbaixador, setIsEmbaixador] = useState(false);
+
+  useEffect(() => {
+    async function checkEmbaixador() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role, work_type")
+          .eq("id", session.user.id)
+          .single();
+        
+        // Verifica se é embaixador
+        const embaixador = profile?.role === "embaixador" || profile?.work_type === "embaixador" || 
+                          profile?.role === "EMBAIXADOR" || profile?.work_type === "EMBAIXADOR";
+        
+        setIsEmbaixador(embaixador || false);
+        
+        // Se não for embaixador, redireciona
+        if (!embaixador) {
+          router.push("/");
+        }
+      } else {
+        router.push("/login");
+      }
+      setLoading(false);
+    }
+    checkEmbaixador();
+  }, [supabase, router]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
+        <div className="text-white/60">Carregando...</div>
+      </div>
+    );
+  }
+
+  if (!isEmbaixador) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-[#0A0A0A] space-y-12 animate-in fade-in duration-700 pb-24">
       

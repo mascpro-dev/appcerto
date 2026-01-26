@@ -15,6 +15,7 @@ import {
   TrendingUp,
   Share2,
   MoreVertical,
+  Award,
   type LucideIcon
 } from "lucide-react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
@@ -43,16 +44,28 @@ const DROPDOWN_ITEMS: NavItem[] = [
   { icon: Calendar, label: "Eventos", href: "/eventos" },
 ];
 
-// Todos os itens para desktop
-const MENU_ITEMS = [
-  { icon: LayoutDashboard, label: "Visão Geral", href: "/" },
-  { icon: GraduationCap, label: "Evolução", href: "/evolucao" },
-  { icon: Users, label: "Minha Rede", href: "/rede" },
-  { icon: MessageSquare, label: "Comunidade", href: "/comunidade" },
-  { icon: ShoppingBag, label: "Loja PRO", href: "/loja" },
-  { icon: Calendar, label: "Eventos", href: "/eventos" },
-  { icon: User, label: "Meu Perfil", href: "/perfil" },
-];
+// Função para obter itens do menu (inclui Jornada apenas para embaixadores)
+const getMenuItems = (isEmbaixador: boolean) => {
+  const baseItems = [
+    { icon: LayoutDashboard, label: "Visão Geral", href: "/" },
+    { icon: GraduationCap, label: "Evolução", href: "/evolucao" },
+    { icon: Users, label: "Minha Rede", href: "/rede" },
+    { icon: MessageSquare, label: "Comunidade", href: "/comunidade" },
+  ];
+
+  // Adiciona Jornada apenas para embaixadores
+  if (isEmbaixador) {
+    baseItems.push({ icon: Award, label: "Minha Jornada", href: "/jornada" });
+  }
+
+  baseItems.push(
+    { icon: ShoppingBag, label: "Loja PRO", href: "/loja" },
+    { icon: Calendar, label: "Eventos", href: "/eventos" },
+    { icon: User, label: "Meu Perfil", href: "/perfil" }
+  );
+
+  return baseItems;
+};
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -61,6 +74,26 @@ export default function Sidebar() {
   const supabase = createClientComponentClient();
   const [loggingOut, setLoggingOut] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [isEmbaixador, setIsEmbaixador] = useState(false);
+
+  // Verificar se o usuário é embaixador
+  useEffect(() => {
+    async function checkEmbaixador() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role, work_type")
+          .eq("id", session.user.id)
+          .single();
+        
+        // Verifica se é embaixador (pode ser role === "embaixador" ou work_type === "embaixador")
+        const embaixador = profile?.role === "embaixador" || profile?.work_type === "embaixador" || profile?.role === "EMBAIXADOR" || profile?.work_type === "EMBAIXADOR";
+        setIsEmbaixador(embaixador || false);
+      }
+    }
+    checkEmbaixador();
+  }, [supabase]);
 
   const handleLogout = async () => {
     try {
@@ -126,6 +159,21 @@ export default function Sidebar() {
                     <span className="font-medium">{item.label}</span>
                   </Link>
                 ))}
+                {/* Adiciona Jornada no dropdown apenas para embaixadores */}
+                {isEmbaixador && (
+                  <Link
+                    href="/jornada"
+                    onClick={() => setDropdownOpen(false)}
+                    className={`flex items-center gap-3 px-4 py-3 text-sm transition-colors ${
+                      pathname === "/jornada"
+                        ? "bg-white/5 text-white"
+                        : "text-slate-400 hover:text-white hover:bg-white/5"
+                    }`}
+                  >
+                    <Award size={18} className={pathname === "/jornada" ? "text-[#C9A66B]" : "text-slate-500"} />
+                    <span className="font-medium">Minha Jornada</span>
+                  </Link>
+                )}
                 <div className="border-t border-white/5 mt-2 pt-2">
                   <button
                     onClick={handleLogout}
@@ -209,7 +257,7 @@ export default function Sidebar() {
           </div>
 
           <nav className="space-y-2">
-            {MENU_ITEMS.map((item) => {
+            {getMenuItems(isEmbaixador).map((item) => {
               const isActive = pathname === item.href;
               return (
                 <Link

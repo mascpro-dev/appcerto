@@ -12,13 +12,14 @@ export default function ComunidadePage() {
   const [currentProfile, setCurrentProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
+  const [rankingFilter, setRankingFilter] = useState<"profissionais" | "distribuidores">("profissionais");
   const supabase = createClientComponentClient();
 
-  // Determinar tipo de usuário
-  const isDistribuidor = currentProfile?.work_type === "distribuidor" || currentProfile?.role === "distribuidor";
-  const userCategory = isDistribuidor ? "distribuidor" : "profissional";
+  // Verificar se usuário é Distribuidor
+  const isDistribuidor = currentProfile?.work_type?.toLowerCase() === "distribuidor" || 
+                         currentProfile?.role?.toLowerCase() === "distribuidor";
 
-  // Carregar perfil do usuário logado
+  // Carregar perfil do usuário logado (apenas para verificar se está logado)
   useEffect(() => {
     async function getCurrentProfile() {
       const { data: { session } } = await supabase.auth.getSession();
@@ -34,70 +35,65 @@ export default function ComunidadePage() {
     getCurrentProfile();
   }, [supabase]);
 
-  // Carregar posts da comunidade (filtrados por categoria)
+  // Carregar posts da comunidade (TODOS os posts, sem filtro)
   useEffect(() => {
     async function fetchPosts() {
-      if (!currentProfile) return;
-
+      setLoading(true);
       const { data, error } = await supabase
         .from("community_posts")
-        .select(`
-          *,
-          profiles (
-            id,
-            full_name,
-            work_type,
-            role,
-            avatar_url
-          )
-        `)
+        .select("*, profiles(full_name, work_type, avatar_url, specialty)")
         .order("created_at", { ascending: false });
       
       if (!error && data) {
-        // Filtrar posts pela mesma categoria do usuário
-        const filteredPosts = data.filter((post: any) => {
-          const postUserType = post.profiles?.work_type === "distribuidor" || post.profiles?.role === "distribuidor";
-          return postUserType === isDistribuidor;
-        });
-        setPosts(filteredPosts);
+        setPosts(data);
       }
       setLoading(false);
     }
     fetchPosts();
-  }, [supabase, currentProfile, isDistribuidor]);
+  }, [supabase]);
 
-  // Carregar ranking (filtrado por categoria)
+  // Carregar ranking (Top 10 com lógica baseada em work_type)
   useEffect(() => {
     async function fetchRanking() {
       if (!currentProfile) return;
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("profiles")
-        .select("id, full_name, pro_balance, coins, avatar_url, work_type, role")
-        .order("pro_balance", { ascending: false })
-        .limit(50);
+        .select("id, full_name, coins, avatar_url, work_type, role, specialty")
+        .order("coins", { ascending: false })
+        .limit(10);
+
+      // Se usuário é Distribuidor: aplicar filtro baseado no estado
+      if (isDistribuidor) {
+        if (rankingFilter === "distribuidores") {
+          // Ranking Distribuidores: buscar apenas Distribuidores
+          query = query.eq("work_type", "Distribuidor");
+        } else {
+          // Ranking Profissionais: excluir Distribuidores
+          query = query.neq("work_type", "Distribuidor");
+        }
+      } else {
+        // Se não é Distribuidor: mostrar apenas Profissionais (excluir Distribuidores)
+        query = query.neq("work_type", "Distribuidor");
+      }
+
+      const { data, error } = await query;
 
       if (!error && data) {
-        // Filtrar pela mesma categoria do usuário
-        const filteredRanking = data
-          .filter((user: any) => {
-            const userType = user.work_type === "distribuidor" || user.role === "distribuidor";
-            return userType === isDistribuidor;
-          })
-          .map((user: any, index: number) => ({
-            ...user,
-            position: index + 1,
-            totalPros: user.pro_balance || user.coins || 0,
-          }));
-        setRanking(filteredRanking);
+        const rankingData = data.map((user: any, index: number) => ({
+          ...user,
+          position: index + 1,
+          totalPros: user.coins || 0,
+        }));
+        setRanking(rankingData);
       }
     }
     fetchRanking();
-  }, [supabase, currentProfile, isDistribuidor]);
+  }, [supabase, currentProfile, isDistribuidor, rankingFilter]);
 
   const handlePostSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!postContent.trim() || !currentProfile) return;
+    if (!postContent.trim()) return;
 
     setPosting(true);
     const { data: { session } } = await supabase.auth.getSession();
@@ -108,36 +104,24 @@ export default function ComunidadePage() {
 
     const { error } = await supabase.from("community_posts").insert([
       {
-        content: postContent,
+        content: postContent.trim(),
         user_id: session.user.id,
-        created_at: new Date().toISOString(),
       },
     ]);
 
     if (!error) {
       setPostContent("");
-      // Recarregar posts
+      // Recarregar posts automaticamente
       const { data, error: fetchError } = await supabase
         .from("community_posts")
-        .select(`
-          *,
-          profiles (
-            id,
-            full_name,
-            work_type,
-            role,
-            avatar_url
-          )
-        `)
+        .select("*, profiles(full_name, work_type, avatar_url, specialty)")
         .order("created_at", { ascending: false });
 
       if (!fetchError && data) {
-        const filteredPosts = data.filter((post: any) => {
-          const postUserType = post.profiles?.work_type === "distribuidor" || post.profiles?.role === "distribuidor";
-          return postUserType === isDistribuidor;
-        });
-        setPosts(filteredPosts);
+        setPosts(data);
       }
+    } else {
+      console.error("Erro ao postar:", error);
     }
     setPosting(false);
   };
@@ -152,8 +136,21 @@ export default function ComunidadePage() {
   };
 
   const getRoleLabel = (profile: any) => {
-    const isDist = profile?.work_type === "distribuidor" || profile?.role === "distribuidor";
-    return isDist ? "Distribuidor" : "Profissional";
+    if (!profile) return "Membro";
+    const isDist = profile.work_type === "distribuidor" || profile.role === "distribuidor";
+    if (isDist) return "Distribuidor";
+    // Verificar se tem specialty para mostrar profissão
+    if (profile.specialty) {
+      const specialties: { [key: string]: string } = {
+        cabeleireiro: "Cabeleireiro",
+        barbeiro: "Barbeiro",
+        esteticista: "Esteticista",
+        manicure: "Manicure",
+        outro: "Profissional",
+      };
+      return specialties[profile.specialty] || "Profissional";
+    }
+    return "Profissional";
   };
 
   const formatNumber = (num: number) => {
@@ -169,7 +166,7 @@ export default function ComunidadePage() {
         </h1>
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-            {isDistribuidor ? "Distribuidores" : "Profissionais"} {" > "} {activeTab === "feed" ? "Feed" : "Ranking"}
+            Comunidade {" > "} {activeTab === "feed" ? "Feed" : "Ranking"}
           </span>
         </div>
       </div>
@@ -307,6 +304,32 @@ export default function ComunidadePage() {
         </div>
       ) : (
         <div className="space-y-4">
+          {/* Filtro de Ranking (apenas para Distribuidores) */}
+          {isDistribuidor && (
+            <div className="flex gap-2 bg-[#0A0A0A] border border-[#222] rounded-xl p-2">
+              <button
+                onClick={() => setRankingFilter("profissionais")}
+                className={`flex-1 px-4 py-2 rounded-lg text-sm font-bold uppercase tracking-wider transition-colors ${
+                  rankingFilter === "profissionais"
+                    ? "bg-[#C9A66B] text-black"
+                    : "bg-transparent text-slate-500 hover:text-slate-300"
+                }`}
+              >
+                Profissionais
+              </button>
+              <button
+                onClick={() => setRankingFilter("distribuidores")}
+                className={`flex-1 px-4 py-2 rounded-lg text-sm font-bold uppercase tracking-wider transition-colors ${
+                  rankingFilter === "distribuidores"
+                    ? "bg-[#C9A66B] text-black"
+                    : "bg-transparent text-slate-500 hover:text-slate-300"
+                }`}
+              >
+                Distribuidores
+              </button>
+            </div>
+          )}
+
           {loading ? (
             <div className="bg-[#0A0A0A] border border-[#222] rounded-2xl p-8 text-center">
               <p className="text-slate-500 text-sm">Carregando ranking...</p>
@@ -319,7 +342,7 @@ export default function ComunidadePage() {
             </div>
           ) : (
             <>
-              {/* Top 3 - Destaque */}
+              {/* Top 3 - Destaque (Ouro, Prata, Bronze) */}
               {ranking.slice(0, 3).map((user, index) => {
                 const position = index + 1;
                 const isFirst = position === 1;
@@ -413,22 +436,22 @@ export default function ComunidadePage() {
                 );
               })}
 
-              {/* Restante do Ranking (4-50) */}
+              {/* Restante do Ranking (4-10) - Lista Compacta */}
               {ranking.slice(3).map((user) => (
                 <div
                   key={user.id}
-                  className="bg-[#0A0A0A] border border-[#222] rounded-xl p-4 hover:border-[#333] transition-colors"
+                  className="bg-[#0A0A0A] border border-[#222] rounded-xl p-3 hover:border-[#333] transition-colors"
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3">
                     {/* Posição */}
-                    <div className="w-8 text-center flex-shrink-0">
-                      <p className="text-sm font-bold text-slate-500">
+                    <div className="w-6 text-center flex-shrink-0">
+                      <p className="text-xs font-bold text-slate-500">
                         #{user.position}
                       </p>
                     </div>
 
-                    {/* Avatar */}
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-[#C9A66B]/20 to-amber-200/20 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 border border-[#222]">
+                    {/* Avatar Pequeno */}
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#C9A66B]/20 to-amber-200/20 flex items-center justify-center text-white font-bold text-xs flex-shrink-0 border border-[#222]">
                       {user.avatar_url ? (
                         <img
                           src={user.avatar_url}
@@ -440,7 +463,7 @@ export default function ComunidadePage() {
                       )}
                     </div>
 
-                    {/* Nome */}
+                    {/* Nome e Profissão */}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-white">
                         {user.full_name || "Membro MASC"}
@@ -448,16 +471,16 @@ export default function ComunidadePage() {
                       <p className="text-xs text-slate-500 uppercase tracking-tight mt-0.5">
                         {getRoleLabel(user)}
                       </p>
-        </div>
+                    </div>
 
                     {/* Total de PROs */}
                     <div className="text-right flex-shrink-0">
                       <p className="text-sm font-black text-[#C9A66B]">
                         {formatNumber(user.totalPros)} PRO
                       </p>
-          </div>
-        </div>
-      </div>
+                    </div>
+                  </div>
+                </div>
               ))}
             </>
           )}
