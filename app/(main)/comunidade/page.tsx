@@ -2,78 +2,233 @@
 
 import { useState, useEffect } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { MessageSquare, Heart, Share2, Send } from "lucide-react";
+import { MessageSquare, Heart, Share2, Send, Crown, Medal, Trophy, Sparkles } from "lucide-react";
 
 export default function ComunidadePage() {
+  const [activeTab, setActiveTab] = useState<"feed" | "ranking">("feed");
   const [postContent, setPostContent] = useState("");
   const [posts, setPosts] = useState<any[]>([]);
+  const [ranking, setRanking] = useState<any[]>([]);
+  const [currentProfile, setCurrentProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [posting, setPosting] = useState(false);
   const supabase = createClientComponentClient();
 
-  // Carregar posts da comunidade
+  // Determinar tipo de usuário
+  const isDistribuidor = currentProfile?.work_type === "distribuidor" || currentProfile?.role === "distribuidor";
+  const userCategory = isDistribuidor ? "distribuidor" : "profissional";
+
+  // Carregar perfil do usuário logado
+  useEffect(() => {
+    async function getCurrentProfile() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", session.user.id)
+          .single();
+        setCurrentProfile(data);
+      }
+    }
+    getCurrentProfile();
+  }, [supabase]);
+
+  // Carregar posts da comunidade (filtrados por categoria)
   useEffect(() => {
     async function fetchPosts() {
+      if (!currentProfile) return;
+
       const { data, error } = await supabase
-        .from("posts")
-        .select("*, profiles(full_name)")
+        .from("community_posts")
+        .select(`
+          *,
+          profiles (
+            id,
+            full_name,
+            work_type,
+            role,
+            avatar_url
+          )
+        `)
         .order("created_at", { ascending: false });
       
-      if (!error && data) setPosts(data);
+      if (!error && data) {
+        // Filtrar posts pela mesma categoria do usuário
+        const filteredPosts = data.filter((post: any) => {
+          const postUserType = post.profiles?.work_type === "distribuidor" || post.profiles?.role === "distribuidor";
+          return postUserType === isDistribuidor;
+        });
+        setPosts(filteredPosts);
+      }
       setLoading(false);
     }
     fetchPosts();
-  }, [supabase]);
+  }, [supabase, currentProfile, isDistribuidor]);
+
+  // Carregar ranking (filtrado por categoria)
+  useEffect(() => {
+    async function fetchRanking() {
+      if (!currentProfile) return;
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, pro_balance, coins, avatar_url, work_type, role")
+        .order("pro_balance", { ascending: false })
+        .limit(50);
+
+      if (!error && data) {
+        // Filtrar pela mesma categoria do usuário
+        const filteredRanking = data
+          .filter((user: any) => {
+            const userType = user.work_type === "distribuidor" || user.role === "distribuidor";
+            return userType === isDistribuidor;
+          })
+          .map((user: any, index: number) => ({
+            ...user,
+            position: index + 1,
+            totalPros: user.pro_balance || user.coins || 0,
+          }));
+        setRanking(filteredRanking);
+      }
+    }
+    fetchRanking();
+  }, [supabase, currentProfile, isDistribuidor]);
 
   const handlePostSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!postContent.trim()) return;
+    if (!postContent.trim() || !currentProfile) return;
 
+    setPosting(true);
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
+    if (!session) {
+      setPosting(false);
+      return;
+    }
 
-    const { error } = await supabase.from("posts").insert([
-      { content: postContent, user_id: session.user.id }
+    const { error } = await supabase.from("community_posts").insert([
+      {
+        content: postContent,
+        user_id: session.user.id,
+        created_at: new Date().toISOString(),
+      },
     ]);
 
     if (!error) {
       setPostContent("");
-      // Atualizar lista de posts (recarregamento simples para o teste)
-      window.location.reload();
+      // Recarregar posts
+      const { data, error: fetchError } = await supabase
+        .from("community_posts")
+        .select(`
+          *,
+          profiles (
+            id,
+            full_name,
+            work_type,
+            role,
+            avatar_url
+          )
+        `)
+        .order("created_at", { ascending: false });
+
+      if (!fetchError && data) {
+        const filteredPosts = data.filter((post: any) => {
+          const postUserType = post.profiles?.work_type === "distribuidor" || post.profiles?.role === "distribuidor";
+          return postUserType === isDistribuidor;
+        });
+        setPosts(filteredPosts);
+      }
     }
+    setPosting(false);
+  };
+
+  const getInitials = (name: string | null) => {
+    if (!name) return "M";
+    const parts = name.split(" ");
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name.charAt(0).toUpperCase();
+  };
+
+  const getRoleLabel = (profile: any) => {
+    const isDist = profile?.work_type === "distribuidor" || profile?.role === "distribuidor";
+    return isDist ? "Distribuidor" : "Profissional";
+  };
+
+  const formatNumber = (num: number) => {
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   };
 
   return (
-    <div className="max-w-[1200px] mx-auto space-y-8 pb-24">
-      {/* Título e Header */}
+    <div className="max-w-[1200px] mx-auto space-y-6 pb-24">
+      {/* Header */}
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-black text-white italic uppercase tracking-tighter">
           Comunidade <span className="text-[#C9A66B]">MASC</span>
         </h1>
-        {/* CORREÇÃO DO SÍMBOLO QUE TRAVA O VERCEL */}
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-            Participação {" > "} Aparência
+            {isDistribuidor ? "Distribuidores" : "Profissionais"} {" > "} {activeTab === "feed" ? "Feed" : "Ranking"}
           </span>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Coluna Principal: Feed */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Caixa de Criação de Post */}
-          <form onSubmit={handlePostSubmit} className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-6 space-y-4">
+      {/* Tabs */}
+      <div className="flex gap-2 border-b border-[#222]">
+        <button
+          onClick={() => setActiveTab("feed")}
+          className={`px-6 py-3 font-bold text-sm uppercase tracking-wider transition-colors relative ${
+            activeTab === "feed"
+              ? "text-[#C9A66B]"
+              : "text-slate-500 hover:text-slate-300"
+          }`}
+        >
+          Feed
+          {activeTab === "feed" && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#C9A66B]" />
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab("ranking")}
+          className={`px-6 py-3 font-bold text-sm uppercase tracking-wider transition-colors relative ${
+            activeTab === "ranking"
+              ? "text-[#C9A66B]"
+              : "text-slate-500 hover:text-slate-300"
+          }`}
+        >
+          Ranking
+          {activeTab === "ranking" && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#C9A66B]" />
+          )}
+        </button>
+      </div>
+
+      {/* Conteúdo das Tabs */}
+      {activeTab === "feed" ? (
+        <div className="space-y-4">
+          {/* Input de Post */}
+          <form
+            onSubmit={handlePostSubmit}
+            className="bg-[#0A0A0A] border border-[#222] rounded-2xl p-6 space-y-4"
+          >
             <textarea
               value={postContent}
               onChange={(e) => setPostContent(e.target.value)}
-              placeholder="O que está acontecendo no seu salão hoje?"
-              className="w-full bg-transparent border-none text-white placeholder:text-slate-600 resize-none focus:outline-none min-h-[100px]"
+              placeholder="O que está acontecendo no seu salão?"
+              className="w-full bg-transparent border-none text-white placeholder:text-slate-600 resize-none focus:outline-none min-h-[120px] text-sm"
+              maxLength={500}
             />
-            <div className="flex justify-end border-t border-white/5 pt-4">
+            <div className="flex justify-between items-center border-t border-[#222] pt-4">
+              <span className="text-xs text-slate-500">
+                {postContent.length}/500
+              </span>
               <button 
                 type="submit"
-                className="bg-[#C9A66B] text-black font-black px-6 py-2 rounded-xl text-xs uppercase hover:opacity-90 flex items-center gap-2"
+                disabled={posting || !postContent.trim()}
+                className="bg-[#C9A66B] text-black font-black px-6 py-2 rounded-xl text-xs uppercase hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-opacity"
               >
-                Postar <Send size={14} />
+                {posting ? "Postando..." : "Postar"} <Send size={14} />
               </button>
             </div>
           </form>
@@ -81,49 +236,233 @@ export default function ComunidadePage() {
           {/* Lista de Posts */}
           <div className="space-y-4">
             {loading ? (
-              <p className="text-slate-500 text-sm italic">Carregando feed...</p>
-            ) : posts.map((post) => (
-              <div key={post.id} className="bg-[#0A0A0A] border border-white/5 rounded-2xl p-6 space-y-4">
-                <div className="flex justify-between items-start">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#C9A66B] to-amber-200 flex items-center justify-center text-black font-bold">
-                      {post.profiles?.full_name?.charAt(0) || "M"}
+              <div className="bg-[#0A0A0A] border border-[#222] rounded-2xl p-8 text-center">
+                <p className="text-slate-500 text-sm">Carregando feed...</p>
+              </div>
+            ) : posts.length === 0 ? (
+              <div className="bg-[#0A0A0A] border border-[#222] rounded-2xl p-8 text-center">
+                <p className="text-slate-500 text-sm">
+                  Nenhum post ainda. Seja o primeiro a compartilhar!
+                </p>
+              </div>
+            ) : (
+              posts.map((post) => (
+                <div
+                  key={post.id}
+                  className="bg-[#0A0A0A] border border-[#222] rounded-2xl p-6 space-y-4 hover:border-[#333] transition-colors"
+                >
+                  <div className="flex items-start gap-3">
+                    {/* Avatar */}
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-[#C9A66B] to-amber-200 flex items-center justify-center text-black font-bold text-sm flex-shrink-0">
+                      {post.profiles?.avatar_url ? (
+                        <img
+                          src={post.profiles.avatar_url}
+                          alt={post.profiles.full_name || "User"}
+                          className="w-full h-full rounded-full object-cover"
+                        />
+                      ) : (
+                        getInitials(post.profiles?.full_name)
+                      )}
                     </div>
-                    <div>
-                      <p className="text-sm font-bold text-white">{post.profiles?.full_name || "Membro MASC"}</p>
-                      <p className="text-[10px] text-slate-500 uppercase tracking-tight">Profissional PRO</p>
+
+                    {/* Nome e Cargo */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold text-white">
+                          {post.profiles?.full_name || "Membro MASC"}
+                        </p>
+                      </div>
+                      <p className="text-xs text-slate-500 uppercase tracking-tight mt-0.5">
+                        {getRoleLabel(post.profiles)}
+                      </p>
                     </div>
                   </div>
-                </div>
-                <p className="text-slate-300 text-sm leading-relaxed">{post.content}</p>
-                <div className="flex items-center gap-6 pt-4 border-t border-white/5">
-                  <button className="flex items-center gap-2 text-slate-500 hover:text-[#C9A66B] transition-colors">
-                    <Heart size={16} /> <span className="text-xs">0</span>
+
+                  {/* Conteúdo do Post */}
+                  <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">
+                    {post.content}
+                  </p>
+
+                  {/* Ações */}
+                  <div className="flex items-center gap-6 pt-4 border-t border-[#222]">
+                    <button className="flex items-center gap-2 text-slate-500 hover:text-[#C9A66B] transition-colors group">
+                      <Heart
+                        size={18}
+                        className="group-hover:fill-[#C9A66B] group-hover:stroke-[#C9A66B]"
+                      />
+                      <span className="text-xs">0</span>
                   </button>
-                  <button className="flex items-center gap-2 text-slate-500 hover:text-[#C9A66B] transition-colors">
-                    <MessageSquare size={16} /> <span className="text-xs">0</span>
+                    <button className="flex items-center gap-2 text-slate-500 hover:text-[#C9A66B] transition-colors group">
+                      <MessageSquare size={18} />
+                      <span className="text-xs">0</span>
                   </button>
                   <button className="flex items-center gap-2 text-slate-500 hover:text-[#C9A66B] transition-colors ml-auto">
-                    <Share2 size={16} />
+                      <Share2 size={18} />
                   </button>
                 </div>
               </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
+      ) : (
+        <div className="space-y-4">
+          {loading ? (
+            <div className="bg-[#0A0A0A] border border-[#222] rounded-2xl p-8 text-center">
+              <p className="text-slate-500 text-sm">Carregando ranking...</p>
+            </div>
+          ) : ranking.length === 0 ? (
+            <div className="bg-[#0A0A0A] border border-[#222] rounded-2xl p-8 text-center">
+              <p className="text-slate-500 text-sm">
+                Nenhum usuário no ranking ainda.
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Top 3 - Destaque */}
+              {ranking.slice(0, 3).map((user, index) => {
+                const position = index + 1;
+                const isFirst = position === 1;
+                const isSecond = position === 2;
+                const isThird = position === 3;
 
-        {/* Sidebar Lateral */}
-        <div className="hidden lg:block space-y-4">
-          <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-6">
-            <h3 className="text-sm font-black text-[#C9A66B] uppercase italic mb-4">Regras da Comunidade</h3>
-            <ul className="text-xs text-slate-400 space-y-3">
-              <li>• Respeito mútuo entre profissionais.</li>
-              <li>• Compartilhe técnicas e resultados.</li>
-              <li>• Ganhe 10 PRO por cada post relevante.</li>
-            </ul>
+                return (
+                  <div
+                    key={user.id}
+                    className={`bg-[#0A0A0A] border-2 rounded-2xl p-6 ${
+                      isFirst
+                        ? "border-[#C9A66B] shadow-lg shadow-[#C9A66B]/20"
+                        : isSecond
+                        ? "border-slate-400"
+                        : isThird
+                        ? "border-amber-600"
+                        : "border-[#222]"
+                    }`}
+                  >
+                    <div className="flex items-center gap-4">
+                      {/* Posição com Ícone */}
+                      <div className="flex-shrink-0">
+                        {isFirst ? (
+                          <div className="relative">
+                            <Crown
+                              size={32}
+                              className="text-[#C9A66B] fill-[#C9A66B]"
+                            />
+                            <Sparkles
+                              size={16}
+                              className="absolute -top-1 -right-1 text-[#C9A66B] animate-pulse"
+                            />
+                          </div>
+                        ) : isSecond ? (
+                          <Medal size={32} className="text-slate-400 fill-slate-400" />
+                        ) : (
+                          <Trophy size={32} className="text-amber-600 fill-amber-600" />
+                        )}
+                      </div>
+
+                      {/* Avatar */}
+                      <div
+                        className={`w-16 h-16 rounded-full flex items-center justify-center text-black font-bold text-lg flex-shrink-0 ${
+                          isFirst
+                            ? "bg-gradient-to-tr from-[#C9A66B] to-amber-200 ring-2 ring-[#C9A66B]"
+                            : isSecond
+                            ? "bg-gradient-to-tr from-slate-300 to-slate-100 ring-2 ring-slate-400"
+                            : "bg-gradient-to-tr from-amber-300 to-amber-100 ring-2 ring-amber-600"
+                        }`}
+                      >
+                        {user.avatar_url ? (
+                          <img
+                            src={user.avatar_url}
+                            alt={user.full_name || "User"}
+                            className="w-full h-full rounded-full object-cover"
+                          />
+                        ) : (
+                          getInitials(user.full_name)
+                        )}
+                      </div>
+
+                      {/* Nome e PROs */}
+                      <div className="flex-1 min-w-0">
+                        <p
+                          className={`text-lg font-black ${
+                            isFirst ? "text-[#C9A66B]" : "text-white"
+                          }`}
+                        >
+                          {user.full_name || "Membro MASC"}
+                        </p>
+                        <p className="text-xs text-slate-500 uppercase tracking-tight mt-0.5">
+                          {getRoleLabel(user)}
+                        </p>
+                      </div>
+
+                      {/* Total de PROs */}
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">
+                          Total PROs
+                        </p>
+                        <p
+                          className={`text-2xl font-black ${
+                            isFirst ? "text-[#C9A66B]" : "text-white"
+                          }`}
+                        >
+                          {formatNumber(user.totalPros)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Restante do Ranking (4-50) */}
+              {ranking.slice(3).map((user) => (
+                <div
+                  key={user.id}
+                  className="bg-[#0A0A0A] border border-[#222] rounded-xl p-4 hover:border-[#333] transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    {/* Posição */}
+                    <div className="w-8 text-center flex-shrink-0">
+                      <p className="text-sm font-bold text-slate-500">
+                        #{user.position}
+                      </p>
+                    </div>
+
+                    {/* Avatar */}
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-[#C9A66B]/20 to-amber-200/20 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 border border-[#222]">
+                      {user.avatar_url ? (
+                        <img
+                          src={user.avatar_url}
+                          alt={user.full_name || "User"}
+                          className="w-full h-full rounded-full object-cover"
+                        />
+                      ) : (
+                        getInitials(user.full_name)
+                      )}
+                    </div>
+
+                    {/* Nome */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-white">
+                        {user.full_name || "Membro MASC"}
+                      </p>
+                      <p className="text-xs text-slate-500 uppercase tracking-tight mt-0.5">
+                        {getRoleLabel(user)}
+                      </p>
+        </div>
+
+                    {/* Total de PROs */}
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-sm font-black text-[#C9A66B]">
+                        {formatNumber(user.totalPros)} PRO
+                      </p>
           </div>
         </div>
       </div>
+              ))}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

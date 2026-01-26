@@ -1,72 +1,127 @@
 "use client";
 
-import { Shield, Star, Award, GraduationCap, Lock, Zap, Target, Users, ShoppingCart, ShieldCheck } from "lucide-react";
+import { Shield, Star, Award, GraduationCap, Lock, Target, Users, ShoppingCart, ShieldCheck } from "lucide-react";
 
 export default function JornadaPage() {
   return (
-    <div className="space-y-12 animate-in fade-in duration-700 pb-24">
+    <div className="min-h-screen bg-[#0A0A0A] space-y-12 animate-in fade-in duration-700 pb-24">
       
-      {/* SEÇÃO 1: HIERARQUIA DE AUTORIDADE */}
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-black text-white italic tracking-tighter uppercase leading-none">
-            Minha <span className="text-[#C9A66B]">Jornada</span>
-          </h1>
-          <p className="text-slate-500 mt-2 font-medium">Progressão formal e autoridade real no ecossistema MASC PRO.</p>
-        </div>
+      {/* CABEÇALHO */}
+      <div className="space-y-3">
+        <h1 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tight leading-tight">
+          MINHA JORNADA
+        </h1>
+        <p className="text-white/70 text-sm md:text-base font-medium">
+          Progressão formal e autoridade real no ecossistema MASC PRO.
+        </p>
+      </div>
 
-        <div className="grid gap-4">
-          {[
-            { title: "CERTIFIED", icon: Shield, status: "concluido", desc: "Fundação técnica e cultural." },
-            { title: "EXPERT", icon: Star, status: "atual", desc: "Domínio avançado e consistência." },
-            { title: "MASTER TÉCNICO", icon: Award, status: "bloqueado", desc: "Autoridade técnica reconhecida." },
-            { title: "EDUCADOR MASC PRO", icon: GraduationCap, status: "bloqueado", desc: "Formador de novos líderes." }
-          ].map((nivel) => (
-            <div key={nivel.title} className={`p-5 rounded-2xl border ${nivel.status === 'bloqueado' ? 'border-white/5 bg-black/40' : 'border-[#C9A66B]/20 bg-[#C9A66B]/5'} flex items-center justify-between`}>
-              <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${nivel.status === 'bloqueado' ? 'bg-zinc-900 text-zinc-700' : 'bg-[#C9A66B] text-black'}`}>
-                  <nivel.icon size={24} />
-                </div>
-                <div>
-                  <h3 className={`font-black italic tracking-tighter ${nivel.status === 'bloqueado' ? 'text-zinc-600' : 'text-white'}`}>{nivel.title}</h3>
-                  <p className="text-xs text-slate-500">{nivel.desc}</p>
-                </div>
-              </div>
-              {nivel.status === 'bloqueado' && <Lock size={16} className="text-zinc-800" />}
+      {/* SEÇÃO 1: LISTA DE PROGRESSO (VERTICAL) */}
+      <div className="space-y-4">
+        {/* CERTIFIED - Ativo/Dourado */}
+        <div className="bg-[#111] border border-white/10 rounded-xl p-5 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-lg bg-[#C9A66B] text-black flex items-center justify-center">
+              <Shield size={24} />
             </div>
-          ))}
+            <div>
+              <h3 className="font-black text-white text-lg uppercase tracking-tight">CERTIFIED</h3>
+              <p className="text-xs text-white/60 mt-1">Fundação técnica e cultural.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* EXPERT - Ativo/Branco */}
+        <div className="bg-[#111] border border-white/10 rounded-xl p-5 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-lg bg-white text-black flex items-center justify-center">
+              <Star size={24} />
+            </div>
+            <div>
+              <h3 className="font-black text-white text-lg uppercase tracking-tight">EXPERT</h3>
+              <p className="text-xs text-white/60 mt-1">Domínio avançado e consistência.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* MASTER TÉCNICO - Bloqueado */}
+        <div className="bg-[#111] border border-white/5 rounded-xl p-5 flex items-center justify-between opacity-60">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-lg bg-zinc-900 text-zinc-600 flex items-center justify-center">
+              <Award size={24} />
+            </div>
+            <div>
+              <h3 className="font-black text-zinc-600 text-lg uppercase tracking-tight">MASTER TÉCNICO</h3>
+              <p className="text-xs text-zinc-700 mt-1">Autoridade técnica reconhecida.</p>
+            </div>
+          </div>
+          <Lock size={20} className="text-zinc-700" />
+        </div>
+
+        {/* EDUCADOR MASC PRO - Bloqueado */}
+        <div className="bg-[#111] border border-white/5 rounded-xl p-5 flex items-center justify-between opacity-60">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-lg bg-zinc-900 text-zinc-600 flex items-center justify-center">
+              <GraduationCap size={24} />
+            </div>
+            <div>
+              <h3 className="font-black text-zinc-600 text-lg uppercase tracking-tight">EDUCADOR MASC PRO</h3>
+              <p className="text-xs text-zinc-700 mt-1">Formador de novos líderes.</p>
+            </div>
+          </div>
+          <Lock size={20} className="text-zinc-700" />
         </div>
       </div>
 
-      {/* SEÇÃO 2: REGRAS DE GAMIFICAÇÃO PROPORCIONAL */}
+      {/* SEÇÃO 2: INTELIGÊNCIA PRO */}
       <div className="space-y-6">
-        <h2 className="text-xl font-black text-white italic tracking-tighter uppercase">Inteligência <span className="text-[#C9A66B]">PRO</span></h2>
+        <h2 className="text-2xl md:text-3xl font-black text-[#C9A66B] uppercase tracking-tight">
+          INTELIGÊNCIA PRO
+        </h2>
         
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Cabeleireiro */}
-          <div className="bg-[#0A0A0A] border border-white/5 rounded-3xl p-6 space-y-6">
-            <span className="text-[#C9A66B] text-[10px] font-black uppercase border border-[#C9A66B]/30 px-3 py-1 rounded-full">Cabeleireiro</span>
-            <ul className="space-y-4">
-              <li className="flex gap-3 items-start text-xs"><Target size={16} className="text-blue-400 shrink-0" /> Constância e aplicação técnica.</li>
-              <li className="flex gap-3 items-start text-xs"><Users size={16} className="text-blue-400 shrink-0" /> Indicação e Evolução individual.</li>
-              <li className="flex gap-3 items-start text-xs"><ShoppingCart size={16} className="text-blue-400 shrink-0" /> Compra de produtos oficiais.</li>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Card 1: CABELEIREIRO */}
+          <div className="bg-[#111] border border-white/10 rounded-xl p-6 space-y-5">
+            <span className="inline-block bg-[#8B6F47] text-white text-xs font-black uppercase px-4 py-2 rounded-full">
+              CABELEIREIRO
+            </span>
+            <ul className="space-y-3">
+              <li className="flex gap-3 items-start text-sm text-white/80">
+                <Target size={18} className="text-blue-400 shrink-0 mt-0.5" />
+                <span>Constância e aplicação técnica</span>
+              </li>
+              <li className="flex gap-3 items-start text-sm text-white/80">
+                <Users size={18} className="text-blue-400 shrink-0 mt-0.5" />
+                <span>Indicação e Evolução individual</span>
+              </li>
+              <li className="flex gap-3 items-start text-sm text-white/80">
+                <ShoppingCart size={18} className="text-blue-400 shrink-0 mt-0.5" />
+                <span>Compra de produtos oficiais</span>
+              </li>
             </ul>
           </div>
 
-          {/* Embaixador */}
-          <div className="bg-[#0A0A0A] border border-[#C9A66B]/20 rounded-3xl p-6 space-y-6 shadow-[0_0_30px_rgba(201,166,107,0.02)]">
-            <span className="bg-[#C9A66B] text-black text-[10px] font-black uppercase px-3 py-1 rounded-full">Embaixador</span>
-            <ul className="space-y-4">
-              <li className="flex gap-3 items-start text-xs"><Star size={16} className="text-[#C9A66B] shrink-0" /> Responsabilidade e formação de outros.</li>
-              <li className="flex gap-3 items-start text-xs"><ShieldCheck size={16} className="text-[#C9A66B] shrink-0" /> Entrega educacional e representação.</li>
-              <li className="flex gap-3 items-start text-xs"><ShoppingCart size={16} className="text-[#C9A66B] shrink-0" /> Compra de produtos oficiais.</li>
+          {/* Card 2: EMBAIXADOR */}
+          <div className="bg-[#111] border border-white/10 rounded-xl p-6 space-y-5">
+            <span className="inline-block bg-[#D4AF37] text-black text-xs font-black uppercase px-4 py-2 rounded-full">
+              EMBAIXADOR
+            </span>
+            <ul className="space-y-3">
+              <li className="flex gap-3 items-start text-sm text-white/80">
+                <ShieldCheck size={18} className="text-white shrink-0 mt-0.5" />
+                <span>Responsabilidade e formação de outros</span>
+              </li>
+              <li className="flex gap-3 items-start text-sm text-white/80">
+                <GraduationCap size={18} className="text-white shrink-0 mt-0.5" />
+                <span>Entrega educacional e representação</span>
+              </li>
+              <li className="flex gap-3 items-start text-sm text-white/80">
+                <ShoppingCart size={18} className="text-white shrink-0 mt-0.5" />
+                <span>Compra de produtos oficiais</span>
+              </li>
             </ul>
           </div>
         </div>
-      </div>
-
-      <div className="text-center p-6 border-t border-white/5">
-        <p className="text-[10px] text-slate-600 font-bold uppercase tracking-[0.3em]">Aqui o título pesa. Não é pontinho infantil.</p>
       </div>
     </div>
   );
