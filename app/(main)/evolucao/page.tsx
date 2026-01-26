@@ -41,9 +41,9 @@ export default function EvolucaoPage() {
           console.error("Erro Supabase:", error);
           // Tentativa de emergência: se falhar, tenta sem ordenar
           const { data: retry } = await supabase.from("course").select("*");
-          if (retry) setCourses(retry);
+          if (retry) setCourse(retry);
         } else {
-          setCourses(courseData || []);
+          setCourse(coursesData || []);
         }
 
       } catch (e) {
@@ -87,13 +87,13 @@ export default function EvolucaoPage() {
       {/* Grid de Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         
-        {!loading && courses.length === 0 && (
+        {!loading && course.length === 0 && (
             <div className="col-span-3 text-center py-10 text-gray-500 border border-gray-800 rounded-lg">
                 Nenhum curso encontrado na tabela 'course'.
             </div>
         )}
 
-        {courses.map((c) => (
+        {course.map((c) => (
           // Usa c.code se existir, senão usa c.id para o link não quebrar
           <Link href={`/evolucao/${c.code || c.id}`} key={c.id} className="block group">
             <div className="relative h-[320px] rounded-2xl overflow-hidden border border-[#1F2937] transition-all duration-300 hover:border-[#C9A66B]/50 hover:shadow-lg hover:shadow-[#C9A66B]/10">
