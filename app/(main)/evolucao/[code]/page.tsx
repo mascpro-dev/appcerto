@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Play, Loader2 } from "lucide-react";
+import { ArrowLeft, Play, Loader2, Volume2, VolumeX, Maximize, Minimize } from "lucide-react";
 import Link from "next/link";
 
 export default function AulaPlayerPage() {
@@ -17,6 +17,12 @@ export default function AulaPlayerPage() {
   
   // Timer
   const [secondsWatched, setSecondsWatched] = useState(0);
+  
+  // Controles do Player Customizado
+  const [isMuted, setIsMuted] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [playerContainer, setPlayerContainer] = useState<HTMLDivElement | null>(null);
+  const [youtubePlayer, setYoutubePlayer] = useState<any>(null);
 
   useEffect(() => {
     async function fetchLessons() {
@@ -55,6 +61,115 @@ export default function AulaPlayerPage() {
     }, 1000);
     return () => clearInterval(interval);
   }, [currentLesson]);
+
+  // Carrega API do YouTube IFrame
+  useEffect(() => {
+    if (!currentLesson) return;
+
+    // Carrega script do YouTube IFrame API
+    const tag = document.createElement('script');
+    tag.src = 'https://www.youtube.com/iframe_api';
+    const firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+
+    // Inicializa player quando API estiver pronta
+    (window as any).onYouTubeIframeAPIReady = () => {
+      const player = new (window as any).YT.Player(`youtube-player-${currentLesson.id}`, {
+        videoId: currentLesson.video_id,
+        playerVars: {
+          autoplay: 1,
+          mute: 1,
+          modestbranding: 1,
+          rel: 0,
+          controls: 0, // Desabilita controles do YouTube
+          showinfo: 0,
+          fs: 0, // Desabilita fullscreen do YouTube
+          iv_load_policy: 3,
+          disablekb: 1,
+          cc_load_policy: 0,
+          playsinline: 1,
+        },
+        events: {
+          onReady: (event: any) => {
+            setYoutubePlayer(event.target);
+            event.target.playVideo();
+          },
+        },
+      });
+    };
+
+    return () => {
+      if ((window as any).onYouTubeIframeAPIReady) {
+        delete (window as any).onYouTubeIframeAPIReady;
+      }
+    };
+  }, [currentLesson]);
+
+  // Função para alternar mute/unmute
+  const toggleMute = () => {
+    if (youtubePlayer) {
+      if (isMuted) {
+        youtubePlayer.unMute();
+        youtubePlayer.setVolume(50); // Volume padrão 50%
+      } else {
+        youtubePlayer.mute();
+      }
+      setIsMuted(!isMuted);
+    }
+  };
+
+  // Função para entrar/sair do fullscreen
+  const toggleFullscreen = () => {
+    if (!playerContainer) return;
+
+    if (!isFullscreen) {
+      // Entrar em fullscreen
+      if (playerContainer.requestFullscreen) {
+        playerContainer.requestFullscreen();
+      } else if ((playerContainer as any).webkitRequestFullscreen) {
+        (playerContainer as any).webkitRequestFullscreen();
+      } else if ((playerContainer as any).mozRequestFullScreen) {
+        (playerContainer as any).mozRequestFullScreen();
+      } else if ((playerContainer as any).msRequestFullscreen) {
+        (playerContainer as any).msRequestFullscreen();
+      }
+    } else {
+      // Sair do fullscreen
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if ((document as any).webkitExitFullscreen) {
+        (document as any).webkitExitFullscreen();
+      } else if ((document as any).mozCancelFullScreen) {
+        (document as any).mozCancelFullScreen();
+      } else if ((document as any).msExitFullscreen) {
+        (document as any).msExitFullscreen();
+      }
+    }
+  };
+
+  // Detecta mudanças no fullscreen
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement
+      ));
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+    };
+  }, []);
 
   // PROTEÇÕES ANTI-COMPARTILHAMENTO E BLOQUEIO DE ACESSO EXTERNO
   useEffect(() => {
@@ -159,7 +274,10 @@ export default function AulaPlayerPage() {
         
         {/* ÁREA DO PLAYER */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="relative aspect-video bg-black rounded-xl overflow-hidden border border-[#222] shadow-2xl shadow-black group select-none">
+          <div 
+            ref={setPlayerContainer}
+            className="relative aspect-video bg-black rounded-xl overflow-hidden border border-[#222] shadow-2xl shadow-black group select-none"
+          >
             
             {/* --- MÁSCARAS DE PROTEÇÃO AGRESSIVAS --- */}
             
@@ -187,25 +305,41 @@ export default function AulaPlayerPage() {
               onContextMenu={(e) => e.preventDefault()}
             />
 
-            {/* IFRAME - Fullscreen habilitado, mas sem web-share */}
-            <iframe 
-              // fs=1: Habilita botão Fullscreen (PERMITIDO)
-              // rel=0: Não mostra vídeos relacionados
-              // modestbranding=1: Remove logo grande
-              // disablekb=1: Desabilita teclado (evita atalhos)
-              src={`https://www.youtube.com/embed/${currentLesson.video_id}?autoplay=1&mute=1&modestbranding=1&rel=0&controls=1&showinfo=0&fs=1&iv_load_policy=3&disablekb=1&cc_load_policy=0&playsinline=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}`}
-              title="Player MASC PRO"
-              className="w-full h-full object-cover pointer-events-auto"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-              allowFullScreen // Habilita fullscreen (PERMITIDO)
-              sandbox="allow-scripts allow-same-origin allow-presentation"
-              style={{ 
-                userSelect: 'none',
-                WebkitUserSelect: 'none',
-                MozUserSelect: 'none',
-                msUserSelect: 'none'
-              }}
+            {/* IFRAME DO YOUTUBE (sem controles) */}
+            <div 
+              id={`youtube-player-${currentLesson.id}`}
+              className="w-full h-full"
             />
+
+            {/* CONTROLES CUSTOMIZADOS DO PLAYER */}
+            <div className="absolute bottom-4 right-4 z-30 flex items-center gap-3">
+              
+              {/* Botão de Volume */}
+              <button
+                onClick={toggleMute}
+                className="bg-black/70 hover:bg-black/90 backdrop-blur-sm rounded-full p-2.5 transition-all hover:scale-110 border border-white/10"
+                title={isMuted ? "Ativar som" : "Desativar som"}
+              >
+                {isMuted ? (
+                  <VolumeX className="w-5 h-5 text-white" />
+                ) : (
+                  <Volume2 className="w-5 h-5 text-white" />
+                )}
+              </button>
+
+              {/* Botão de Fullscreen */}
+              <button
+                onClick={toggleFullscreen}
+                className="bg-black/70 hover:bg-black/90 backdrop-blur-sm rounded-full p-2.5 transition-all hover:scale-110 border border-white/10"
+                title={isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
+              >
+                {isFullscreen ? (
+                  <Minimize className="w-5 h-5 text-white" />
+                ) : (
+                  <Maximize className="w-5 h-5 text-white" />
+                )}
+              </button>
+            </div>
           </div>
 
           <div className="flex justify-between items-start">
