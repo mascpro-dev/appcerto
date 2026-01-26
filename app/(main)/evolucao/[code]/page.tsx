@@ -1,78 +1,97 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Play, CheckCircle2, Lock } from "lucide-react";
+import { useParams } from "next/navigation";
+import { ArrowLeft, Play, Lock } from "lucide-react";
 import Link from "next/link";
-import { toast } from "sonner"; // Se não tiver sonner, troque por alert normal
 
 export default function AulaPlayerPage() {
   const params = useParams();
   const supabase = createClientComponentClient();
-  
-  // Pega o código da URL (ex: MOD_C1-BLONDE)
   const courseCode = params?.code as string;
 
   const [lessons, setLessons] = useState<any[]>([]);
   const [currentLesson, setCurrentLesson] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
-  // Timer para Recompensa
+  // Timer
   const [secondsWatched, setSecondsWatched] = useState(0);
 
-  // 1. Busca as Aulas do Banco
   useEffect(() => {
     async function fetchLessons() {
-      const { data } = await supabase
-        .from("lessons")
-        .select("*")
-        .eq("course_code", courseCode)
-        .order("sequence_order", { ascending: true });
+      try {
+        setLoading(true);
+        console.log("Buscando aulas para o código:", courseCode);
 
-      if (data && data.length > 0) {
-        setLessons(data);
-        setCurrentLesson(data[0]); // Começa na aula 1
+        // BUSCA COM ILIKE (Ignora maiúsculas/minúsculas)
+        const { data, error } = await supabase
+          .from("lessons")
+          .select("*")
+          .ilike("course_code", courseCode) // <--- O segredo está aqui
+          .order("sequence_order", { ascending: true });
+
+        if (error) {
+          throw error;
+        }
+
+        if (data && data.length > 0) {
+          setLessons(data);
+          setCurrentLesson(data[0]);
+        } else {
+          setErrorMsg("Nenhuma aula encontrada. Verifique se o código do curso está correto no Banco.");
+        }
+      } catch (err: any) {
+        console.error("Erro ao carregar aulas:", err);
+        setErrorMsg(`Erro de acesso: ${err.message || "Tente recarregar."}`);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
-    fetchLessons();
+
+    if (courseCode) {
+      fetchLessons();
+    }
   }, [courseCode, supabase]);
 
-  // 2. O Relógio de Dinheiro (Roda a cada 1 segundo)
+  // Timer de Recompensa
   useEffect(() => {
     if (!currentLesson) return;
-
     const interval = setInterval(() => {
       setSecondsWatched((prev) => {
-        const novoTempo = prev + 1;
-        
-        // A cada 15 minutos (900 segundos)
-        if (novoTempo > 0 && novoTempo % 900 === 0) {
-          pagarRecompensa();
-        }
-        return novoTempo;
+        const novo = prev + 1;
+        if (novo > 0 && novo % 900 === 0) pagarRecompensa();
+        return novo;
       });
     }, 1000);
-
     return () => clearInterval(interval);
   }, [currentLesson]);
 
   async function pagarRecompensa() {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
+      // Tenta pagar, se der erro ignora (silencioso)
       await supabase.rpc('reward_watch_time', { user_id: user.id });
-      alert("💰 Parabéns! Você ganhou +50 PRO por estudar 15min.");
+      alert("💰 +50 PRO creditados!");
     }
   }
 
-  if (loading) return <div className="p-10 text-white">Carregando sala de aula...</div>;
-  if (!currentLesson) return <div className="p-10 text-white">Nenhuma aula encontrada para este curso.</div>;
+  if (loading) return <div className="p-10 text-white animate-pulse">Carregando player...</div>;
+  
+  // Tratamento de Erro na Tela
+  if (errorMsg || !currentLesson) return (
+    <div className="p-10 text-center">
+        <h2 className="text-xl text-red-500 font-bold mb-2">Ops! Algo deu errado.</h2>
+        <p className="text-gray-400 mb-4">{errorMsg || "Conteúdo indisponível."}</p>
+        <Link href="/evolucao" className="text-[#C9A66B] hover:underline">Voltar para Cursos</Link>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white p-4 md:p-8">
       
-      {/* Header Player */}
+      {/* Topo */}
       <div className="flex justify-between items-center mb-6">
         <Link href="/evolucao" className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
           <ArrowLeft className="w-5 h-5" />
@@ -85,37 +104,32 @@ export default function AulaPlayerPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* ÁREA DO VÍDEO (70%) */}
+        {/* Player (Youtube) */}
         <div className="lg:col-span-2 space-y-4">
           <div className="relative aspect-video bg-black rounded-xl overflow-hidden border border-[#222] shadow-2xl shadow-black group">
+             {/* Máscara Transparente */}
+            <div className="absolute inset-x-0 top-0 h-16 z-20 bg-transparent" />
             
-            {/* MÁSCARA ANTI-CLIQUE (Impede sair pro YouTube) */}
-            <div className="absolute inset-x-0 top-0 h-20 z-20 bg-transparent" />
-            <div className="absolute inset-x-0 bottom-14 h-20 z-20 bg-transparent" /> {/* Bloqueia logo do YT embaixo */}
-
-            {/* Iframe */}
             <iframe 
               src={`https://www.youtube.com/embed/${currentLesson.video_id}?autoplay=1&modestbranding=1&rel=0&controls=1&showinfo=0&fs=0&iv_load_policy=3&disablekb=1`}
-              title="Player MASC PRO"
+              title="Player"
               className="w-full h-full object-cover"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             />
           </div>
-
           <div>
             <h1 className="text-2xl font-bold text-white">{currentLesson.title}</h1>
             <p className="text-gray-500 text-sm mt-1">
-              Assistindo agora • {Math.floor(secondsWatched / 60)} minutos estudados nesta sessão.
+              {Math.floor(secondsWatched / 60)} min estudados.
             </p>
           </div>
         </div>
 
-        {/* LISTA LATERAL (30%) */}
+        {/* Lista Lateral */}
         <div className="bg-[#111] border border-[#222] rounded-xl p-5 h-fit">
           <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-5">
             Neste Módulo
           </h3>
-          
           <div className="space-y-3">
             {lessons.map((lesson, index) => {
               const isActive = lesson.id === currentLesson.id;
@@ -124,7 +138,7 @@ export default function AulaPlayerPage() {
                   key={lesson.id}
                   onClick={() => {
                     setCurrentLesson(lesson);
-                    setSecondsWatched(0); // Reseta timer ao trocar aula
+                    setSecondsWatched(0);
                   }}
                   className={`w-full flex items-start gap-3 p-3 rounded-lg text-left transition-all border ${
                     isActive 
@@ -137,31 +151,14 @@ export default function AulaPlayerPage() {
                   }`}>
                     {isActive ? <Play size={10} fill="currentColor" /> : index + 1}
                   </div>
-                  
-                  <div>
-                    <p className={`text-sm font-bold leading-tight ${isActive ? "text-white" : "text-gray-400"}`}>
-                      {lesson.title}
-                    </p>
-                    {isActive && (
-                      <span className="text-[10px] text-[#C9A66B] font-medium mt-1 block">
-                        Reproduzindo...
-                      </span>
-                    )}
-                  </div>
+                  <p className={`text-sm font-bold leading-tight ${isActive ? "text-white" : "text-gray-400"}`}>
+                    {lesson.title}
+                  </p>
                 </button>
               );
             })}
-            
-            {/* Aula Bloqueada Exemplo (Visual) */}
-            <div className="flex items-center gap-3 p-3 opacity-50 cursor-not-allowed">
-               <div className="w-6 h-6 rounded-full bg-[#222] flex items-center justify-center text-gray-600">
-                  <Lock size={12} />
-               </div>
-               <p className="text-sm font-bold text-gray-600">Próximo Módulo (Em breve)</p>
-            </div>
           </div>
         </div>
-
       </div>
     </div>
   );
