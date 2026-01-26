@@ -69,25 +69,69 @@ export default function PerfilPage() {
   const fetchCEP = async (cepValue: string) => {
     const cleanCep = cepValue.replace(/\D/g, "");
     
-    if (cleanCep.length !== 8) return;
+    if (cleanCep.length !== 8) {
+      console.log("CEP incompleto:", cleanCep);
+      return;
+    }
+    
+    // Evita múltiplas chamadas simultâneas
+    if (loadingCep) {
+      console.log("Busca de CEP já em andamento");
+      return;
+    }
     
     setLoadingCep(true);
+    console.log("Buscando CEP:", cleanCep);
+    
     try {
-      const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
-      const data = await response.json();
+      const url = `https://viacep.com.br/ws/${cleanCep}/json/`;
+      console.log("URL da requisição:", url);
       
-      if (!data.erro) {
-        setAddress(data.logradouro || "");
-        setNeighborhood(data.bairro || "");
-        setCityState(`${data.localidade}/${data.uf}`);
-        
-        // Move o foco para o campo número
-        setTimeout(() => {
-          numberInputRef.current?.focus();
-        }, 100);
+      const response = await fetch(url, {
+        method: 'GET',
+        mode: 'cors',
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+      
+      console.log("Status da resposta:", response.status);
+      
+      if (!response.ok) {
+        throw new Error(`Erro na resposta da API: ${response.status}`);
       }
-    } catch (error) {
+      
+      const data = await response.json();
+      console.log("Dados recebidos:", data);
+      
+      if (data.erro) {
+        console.warn("CEP não encontrado:", cleanCep);
+        alert("CEP não encontrado. Por favor, verifique o CEP digitado.");
+        return;
+      }
+      
+      // Preenche os campos apenas se houver dados válidos
+      if (data.logradouro) {
+        setAddress(data.logradouro);
+        console.log("Endereço preenchido:", data.logradouro);
+      }
+      if (data.bairro) {
+        setNeighborhood(data.bairro);
+        console.log("Bairro preenchido:", data.bairro);
+      }
+      if (data.localidade && data.uf) {
+        const cidadeEstado = `${data.localidade}/${data.uf}`;
+        setCityState(cidadeEstado);
+        console.log("Cidade/Estado preenchido:", cidadeEstado);
+      }
+      
+      // Move o foco para o campo número
+      setTimeout(() => {
+        numberInputRef.current?.focus();
+      }, 200);
+    } catch (error: any) {
       console.error("Erro ao buscar CEP:", error);
+      alert(`Erro ao buscar CEP: ${error.message || "Erro desconhecido"}`);
     } finally {
       setLoadingCep(false);
     }
@@ -97,11 +141,18 @@ export default function PerfilPage() {
   const handleCepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const masked = maskCEP(e.target.value);
     setCep(masked);
+    
+    // Busca automática quando completa 8 dígitos
+    const cleanCep = masked.replace(/\D/g, "");
+    if (cleanCep.length === 8) {
+      fetchCEP(masked);
+    }
   };
 
-  // Handler para blur do CEP (busca automática)
+  // Handler para blur do CEP (busca automática caso não tenha buscado antes)
   const handleCepBlur = () => {
-    if (cep.replace(/\D/g, "").length === 8) {
+    const cleanCep = cep.replace(/\D/g, "");
+    if (cleanCep.length === 8) {
       fetchCEP(cep);
     }
   };
@@ -290,7 +341,7 @@ export default function PerfilPage() {
                   value={cep}
                   onChange={handleCepChange}
                   onBlur={handleCepBlur}
-                  className="w-full bg-[#0A0A0A] border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white placeholder:text-slate-600 focus:outline-none focus:border-[#C9A66B] transition-all"
+                  className="w-full bg-[#0A0A0A] border border-white/10 rounded-2xl pl-12 pr-12 py-4 text-white placeholder:text-slate-600 focus:outline-none focus:border-[#C9A66B] transition-all"
                   placeholder="00000-000"
                   maxLength={9}
                 />

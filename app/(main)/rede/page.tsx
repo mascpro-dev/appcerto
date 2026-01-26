@@ -2,12 +2,13 @@
 
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useEffect, useState } from "react";
-import { Copy, CheckCircle, TrendingUp, UserPlus } from "lucide-react";
+import { Copy, UserPlus, CheckCircle, TrendingUp, Search, Filter } from "lucide-react";
 
 export default function RedePage() {
   const [indicados, setIndicados] = useState<any[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const supabase = createClientComponentClient();
 
   useEffect(() => {
@@ -17,18 +18,19 @@ export default function RedePage() {
         setUserId(session.user.id);
         const { data } = await supabase
           .from("profiles")
-          .select("full_name, created_at")
-          .eq('invited_by', session.user.id);
+          .select("full_name, created_at, city_state, specialty")
+          .eq('invited_by', session.user.id)
+          .order('created_at', { ascending: false });
         if (data) setIndicados(data);
       }
     }
     getData();
   }, [supabase]);
 
-  // Lógica de link dinâmico para evitar erro 403 e enviar para o cadastro
+  // Lógica de link dinâmico
   const inviteLink = userId 
-    ? `https://appcerto-xi.vercel.app/cadastro?ref=${userId}` 
-    : "https://appcerto-xi.vercel.app/cadastro";
+    ? `mascpro.com/?ref=${userId}` 
+    : "mascpro.com/";
 
   const handleCopy = () => {
     navigator.clipboard.writeText(inviteLink);
@@ -36,45 +38,176 @@ export default function RedePage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Função para formatar profissão
+  const formatSpecialty = (specialty: string | null) => {
+    if (!specialty) return "";
+    const specialties: { [key: string]: string } = {
+      cabeleireiro: "CABELEIREIRO",
+      barbeiro: "BARBEIRO",
+      esteticista: "ESTETICISTA",
+      manicure: "MANICURE",
+      outro: "OUTRO"
+    };
+    return specialties[specialty] || specialty.toUpperCase();
+  };
+
+  // Função para obter inicial do nome
+  const getInitial = (name: string | null) => {
+    if (!name) return "?";
+    return name.charAt(0).toUpperCase();
+  };
+
+  // Função para formatar data
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
+  // Filtrar indicados pela busca
+  const filteredIndicados = indicados.filter(indicado => 
+    indicado.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-        <h1 className="text-3xl font-black text-white italic uppercase tracking-tighter">
-          Minha <span className="text-[#C9A66B]">Rede</span>
-        </h1>
+      {/* Cabeçalho */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+        <div className="space-y-2">
+          <h1 className="text-3xl font-black text-white italic uppercase tracking-tighter">
+            MINHA <span className="text-[#C9A66B]">REDE</span>
+          </h1>
+          <p className="text-slate-400 text-sm">Gerencie sua equipe e amplie seus ganhos.</p>
+        </div>
         
-        <div className="flex items-center gap-2 p-1 rounded-xl border border-white/10 bg-[#0A0A0A]">
-          <div className="px-4 py-2">
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-tight">Link de Convite</p>
-            <a href={inviteLink} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 font-mono hover:underline">
-              {inviteLink}
-            </a>
+        {/* Card do Link de Convite */}
+        <div className="bg-[#111] border border-white/10 rounded-2xl p-5 w-full lg:w-auto">
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">
+            SEU LINK DE CONVITE
+          </p>
+          <div className="flex items-center gap-3">
+            <p className="text-sm text-white font-mono flex-1 truncate">{inviteLink}</p>
+            <button 
+              onClick={handleCopy} 
+              className="bg-[#C9A66B] text-black px-6 py-2 rounded-lg font-black text-xs uppercase hover:opacity-90 transition-opacity whitespace-nowrap"
+            >
+              {copied ? "Copiado!" : "Copiar"}
+            </button>
           </div>
-          <button onClick={handleCopy} className="bg-[#C9A66B] text-black px-6 py-3 rounded-lg font-black text-xs uppercase hover:opacity-90">
-            {copied ? "Copiado!" : "Copiar"}
-          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-[#0A0A0A] border border-white/5 p-6 rounded-2xl flex items-center gap-5">
-          <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500">
-            <UserPlus size={24} />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Total Indicados</p>
-            <p className="text-3xl font-black text-white">{indicados.length}</p>
-          </div>
-        </div>
-        <div className="bg-[#0A0A0A] border border-white/5 p-6 rounded-2xl flex items-center gap-5">
-          <div className="w-12 h-12 rounded-xl bg-[#C9A66B]/10 flex items-center justify-center text-[#C9A66B]">
-            <TrendingUp size={24} />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">PROs Gerados</p>
-            <p className="text-3xl font-black text-white">{indicados.length * 50} PRO</p>
+      {/* Cards de Métricas */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-[#111] border border-white/5 p-6 rounded-2xl">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500">
+              <UserPlus size={24} />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">TOTAL INDICADOS</p>
+              <p className="text-3xl font-black text-white">{indicados.length}</p>
+            </div>
           </div>
         </div>
+        
+        <div className="bg-[#111] border border-white/5 p-6 rounded-2xl">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center text-green-500">
+              <CheckCircle size={24} />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">MEMBROS ATIVOS</p>
+              <p className="text-3xl font-black text-white">{indicados.length}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-[#111] border border-white/5 p-6 rounded-2xl">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-[#C9A66B]/10 flex items-center justify-center text-[#C9A66B]">
+              <TrendingUp size={24} />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">PROS GERADOS</p>
+              <p className="text-3xl font-black text-white">50 PRO</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Seção de Membros da Equipe */}
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h2 className="text-xl font-black text-white italic uppercase tracking-tighter">
+            Membros da <span className="text-[#C9A66B]">Equipe</span>
+          </h2>
+          
+          {/* Barra de Busca */}
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="relative flex-1 sm:flex-initial">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+              <input
+                type="text"
+                placeholder="Buscar indicado..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full sm:w-64 bg-[#111] border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:border-[#C9A66B] transition-colors text-sm"
+              />
+            </div>
+            <button className="bg-[#111] border border-white/10 rounded-xl p-2.5 hover:border-[#C9A66B] transition-colors">
+              <Filter size={18} className="text-slate-500" />
+            </button>
+          </div>
+        </div>
+
+        {/* Lista de Membros */}
+        {filteredIndicados.length > 0 ? (
+          <div className="space-y-3">
+            {filteredIndicados.map((indicado, index) => (
+              <div
+                key={index}
+                className="bg-[#111] border border-white/5 rounded-2xl p-5 flex items-center gap-4 hover:border-white/10 transition-colors"
+              >
+                {/* Avatar com Inicial */}
+                <div className="w-12 h-12 rounded-xl bg-[#C9A66B]/20 flex items-center justify-center text-[#C9A66B] font-black text-lg flex-shrink-0">
+                  {getInitial(indicado.full_name)}
+                </div>
+                
+                {/* Informações do Membro */}
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-bold text-white truncate">
+                    {indicado.full_name || "Usuário sem nome"}
+                  </h3>
+                  <div className="flex items-center gap-2 text-slate-400 text-sm mt-1">
+                    {indicado.specialty && (
+                      <>
+                        <span className="font-semibold">{formatSpecialty(indicado.specialty)}</span>
+                        <span>•</span>
+                      </>
+                    )}
+                    <span>{formatDate(indicado.created_at)}</span>
+                  </div>
+                </div>
+                
+                {/* Badge ATIVO */}
+                <div className="flex-shrink-0">
+                  <span className="bg-green-500/20 text-green-400 px-4 py-1.5 rounded-lg text-xs font-bold uppercase">
+                    ATIVO
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="bg-[#111] border border-white/5 rounded-2xl p-12 text-center">
+            <p className="text-slate-400 text-lg">
+              {searchTerm ? "Nenhum indicado encontrado." : "Você ainda não indicou ninguém."}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

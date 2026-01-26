@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ChevronDown, Scissors, User, Mail, Phone, FileText, Lock, MapPin, Briefcase, Calendar, Clock, Home } from "lucide-react";
+import { ChevronDown, Scissors, User, Mail, Phone, FileText, Lock, MapPin, Briefcase, Calendar, Clock, Home, Loader2 } from "lucide-react";
 
 export default function CadastroPage() {
   // Campos obrigatórios
@@ -20,16 +20,127 @@ export default function CadastroPage() {
   const [bairro, setBairro] = useState("");
   const [cep, setCep] = useState("");
   const [cityState, setCityState] = useState("");
+  const [number, setNumber] = useState("");
   const [hasSchedule, setHasSchedule] = useState("");
   
   // Campo select
   const [workType, setWorkType] = useState("proprio");
   
   const [loading, setLoading] = useState(false);
+  const [loadingCep, setLoadingCep] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+  const numberInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const supabase = createClientComponentClient();
+
+  // 1. CAPTURA DO CÓDIGO DE REFERÊNCIA DA URL (?ref=...)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const refCode = params.get("ref");
+      if (refCode) {
+        localStorage.setItem("masc_referrer", refCode);
+        console.log("Código de referência salvo no localStorage:", refCode);
+        // Limpa a URL para ficar profissional
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
+  }, []);
+
+  // Função para aplicar máscara de CEP
+  const maskCEP = (value: string) => {
+    const numbers = value.replace(/\D/g, "");
+    if (numbers.length <= 5) return numbers;
+    return `${numbers.slice(0, 5)}-${numbers.slice(5, 8)}`;
+  };
+
+  // Função para aplicar máscara de WhatsApp
+  const maskPhone = (value: string) => {
+    const numbers = value.replace(/\D/g, "");
+    if (numbers.length <= 2) return numbers;
+    if (numbers.length <= 7) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
+    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
+  };
+
+  // Função para buscar CEP via ViaCEP
+  const fetchCEP = async (cepValue: string) => {
+    const cleanCep = cepValue.replace(/\D/g, "");
+    
+    if (cleanCep.length !== 8) {
+      return;
+    }
+    
+    if (loadingCep) return;
+    
+    setLoadingCep(true);
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`, {
+        method: 'GET',
+        mode: 'cors',
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Erro na resposta da API: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.erro) {
+        console.warn("CEP não encontrado:", cleanCep);
+        return;
+      }
+      
+      // Preenche os campos automaticamente (exceto número)
+      if (data.logradouro) {
+        setRua(data.logradouro);
+      }
+      if (data.bairro) {
+        setBairro(data.bairro);
+      }
+      if (data.localidade && data.uf) {
+        setCityState(`${data.localidade}/${data.uf}`);
+      }
+      
+      // Move o foco para o campo número
+      setTimeout(() => {
+        numberInputRef.current?.focus();
+      }, 200);
+    } catch (error: any) {
+      console.error("Erro ao buscar CEP:", error);
+    } finally {
+      setLoadingCep(false);
+    }
+  };
+
+  // Handler para mudança de CEP
+  const handleCepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const masked = maskCEP(e.target.value);
+    setCep(masked);
+    
+    // Busca automática quando completa 8 dígitos
+    const cleanCep = masked.replace(/\D/g, "");
+    if (cleanCep.length === 8) {
+      fetchCEP(masked);
+    }
+  };
+
+  // Handler para blur do CEP
+  const handleCepBlur = () => {
+    const cleanCep = cep.replace(/\D/g, "");
+    if (cleanCep.length === 8) {
+      fetchCEP(cep);
+    }
+  };
+
+  // Handler para mudança de telefone
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const masked = maskPhone(e.target.value);
+    setPhone(masked);
+  };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,11 +148,11 @@ export default function CadastroPage() {
     setError(null);
 
     try {
-      // 1. RESGATE DO PADRINHO: Antes de tudo, cria variável referrerId
+      // 1. RESGATE DO PADRINHO: OBRIGATORIAMENTE lê do localStorage
       const referrerId = typeof window !== "undefined" ? localStorage.getItem("masc_referrer") : null;
-      console.log("Padrinho encontrado:", referrerId);
+      console.log("Código de referência lido do localStorage:", referrerId);
 
-      // 2. PREPARAÇÃO DOS DADOS: Monta objeto updates com TODOS os campos
+      // 2. PREPARAÇÃO DOS DADOS: Monta objeto updates com TODOS os campos incluindo endereço completo
       const updates: any = {
         full_name: fullName,
         phone: phone,
@@ -52,10 +163,11 @@ export default function CadastroPage() {
         rua: rua,
         bairro: bairro,
         cep: cep,
+        number: number,
         city_state: cityState,
         work_type: workType,
         has_schedule: hasSchedule === "sim", // Converte para boolean
-        invited_by: referrerId || null, // Usa referrerId ou null se não tiver
+        invited_by: referrerId, // OBRIGATORIAMENTE envia o código de referência para a coluna invited_by
         coins: 50,
         updated_at: new Date().toISOString(),
       };
@@ -217,9 +329,10 @@ export default function CadastroPage() {
                 type="tel" 
                 required 
                 value={phone} 
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={handlePhoneChange}
                 className="w-full bg-[#0A0A0A] border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white placeholder:text-slate-600 focus:outline-none focus:border-[#C9A66B] transition-all"
                 placeholder="(00) 00000-0000"
+                maxLength={15}
               />
             </div>
           </div>
@@ -278,9 +391,34 @@ export default function CadastroPage() {
             </div>
           </div>
 
-          {/* Rua */}
+          {/* CEP - Primeiro campo de endereço */}
           <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Rua</label>
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">CEP</label>
+            <div className="relative">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
+                <MapPin size={18} />
+              </div>
+              <input
+                type="text" 
+                required 
+                value={cep} 
+                onChange={handleCepChange}
+                onBlur={handleCepBlur}
+                className="w-full bg-[#0A0A0A] border border-white/10 rounded-2xl pl-12 pr-12 py-4 text-white placeholder:text-slate-600 focus:outline-none focus:border-[#C9A66B] transition-all"
+                placeholder="00000-000"
+                maxLength={9}
+              />
+              {loadingCep && (
+                <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                  <Loader2 size={16} className="animate-spin text-[#C9A66B]" />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Endereço (Rua) - Largura total */}
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Endereço (Rua)</label>
             <div className="relative">
               <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
                 <Home size={18} />
@@ -296,39 +434,40 @@ export default function CadastroPage() {
             </div>
           </div>
 
-          {/* Bairro */}
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Bairro</label>
-            <div className="relative">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
-                <MapPin size={18} />
+          {/* Número e Bairro lado a lado */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* Número */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Número</label>
+              <div className="relative">
+                <input
+                  ref={numberInputRef}
+                  type="text" 
+                  required 
+                  value={number} 
+                  onChange={(e) => setNumber(e.target.value)}
+                  className="w-full bg-[#0A0A0A] border border-white/10 rounded-2xl pl-4 pr-4 py-4 text-white placeholder:text-slate-600 focus:outline-none focus:border-[#C9A66B] transition-all"
+                  placeholder="123"
+                />
               </div>
-              <input
-                type="text" 
-                required 
-                value={bairro} 
-                onChange={(e) => setBairro(e.target.value)}
-                className="w-full bg-[#0A0A0A] border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white placeholder:text-slate-600 focus:outline-none focus:border-[#C9A66B] transition-all"
-                placeholder="Nome do bairro"
-              />
             </div>
-          </div>
 
-          {/* CEP */}
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">CEP</label>
-            <div className="relative">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
-                <MapPin size={18} />
+            {/* Bairro */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Bairro</label>
+              <div className="relative">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
+                  <MapPin size={18} />
+                </div>
+                <input
+                  type="text" 
+                  required 
+                  value={bairro} 
+                  onChange={(e) => setBairro(e.target.value)}
+                  className="w-full bg-[#0A0A0A] border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white placeholder:text-slate-600 focus:outline-none focus:border-[#C9A66B] transition-all"
+                  placeholder="Nome do bairro"
+                />
               </div>
-              <input
-                type="text" 
-                required 
-                value={cep} 
-                onChange={(e) => setCep(e.target.value)}
-                className="w-full bg-[#0A0A0A] border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white placeholder:text-slate-600 focus:outline-none focus:border-[#C9A66B] transition-all"
-                placeholder="00000-000"
-              />
             </div>
           </div>
 
