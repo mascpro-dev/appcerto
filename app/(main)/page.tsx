@@ -3,7 +3,6 @@
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useEffect, useState } from "react";
 import { Trophy, Copy, Check } from "lucide-react";
-import LoadingRespiro from "@/componentes/LoadingRespiro";
 
 export default function VisaoGeralPage() {
   const [profile, setProfile] = useState<any>(null);
@@ -35,16 +34,11 @@ export default function VisaoGeralPage() {
     getData();
   }, [supabase]);
 
-  if (loading) return <LoadingRespiro />;
-
-  // Para Marcus Paulo (ou outros casos específicos), zerar as moedas
-  // Verificar se o nome contém "Marcus Paulo" ou se há alguma flag específica
-  const isMarcusPaulo = profile?.full_name?.toLowerCase().includes("marcus paulo");
-  const coins = isMarcusPaulo ? 0 : (profile?.coins || 0); // Zera para Marcus Paulo
-  const balance = coins; // Usa o valor dinâmico
-  const userName = "Membro Fundador"; // Conforme a imagem
-  const referralCode = profile?.referral_code || "masc-pro";
-  const referralLink = `mascpro.app/ref/${referralCode}`;
+  // Calcular saldo real: coins + personal_coins
+  const balance = loading ? null : ((profile?.coins || 0) + (profile?.personal_coins || 0));
+  const userName = profile?.full_name || "Usuário";
+  const referralCode = profile?.referral_code || "";
+  const referralLink = referralCode ? `mascpro.app/ref/${referralCode}` : "";
 
   const handleCopy = () => {
     navigator.clipboard.writeText(referralLink);
@@ -83,7 +77,13 @@ export default function VisaoGeralPage() {
                  </div>
                  <div className="flex items-baseline gap-1 mb-2">
                     <h2 className="text-5xl md:text-6xl lg:text-7xl font-black text-white tracking-tighter">
-                        {formatNumber(balance)}
+                        {balance === null ? (
+                          <span className="inline-block h-12 md:h-16 lg:h-20 w-32 md:w-40 bg-white/10 rounded animate-pulse" />
+                        ) : balance === 0 ? (
+                          "0"
+                        ) : (
+                          formatNumber(balance)
+                        )}
                     </h2>
                     <span className="text-lg md:text-xl lg:text-2xl font-bold text-[#C9A66B] ml-1">PRO</span>
                  </div>
@@ -101,11 +101,24 @@ export default function VisaoGeralPage() {
               </div>
               <div className="mt-6 md:mt-8">
                   <div className="flex justify-between text-xs font-bold text-white mb-2 uppercase tracking-wider">
-                      <span>{formatNumber(balance)} PRO</span>
+                      <span>
+                        {balance === null ? (
+                          <span className="inline-block h-3 w-16 bg-white/10 rounded animate-pulse" />
+                        ) : (
+                          `${formatNumber(balance)} PRO`
+                        )}
+                      </span>
                       <span>10.000 PRO</span>
                   </div>
                   <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-                      <div className="h-full bg-[#C9A66B]" style={{ width: `${Math.min((balance / 10000) * 100, 100)}%` }} /> 
+                      <div 
+                        className="h-full bg-[#C9A66B]" 
+                        style={{ 
+                          width: balance === null 
+                            ? "0%" 
+                            : `${Math.min((balance / 10000) * 100, 100)}%` 
+                        }} 
+                      /> 
                   </div>
               </div>
               <button className="mt-6 w-full border border-white/10 bg-transparent text-white font-bold py-3 rounded-lg hover:bg-white/5 transition-colors uppercase text-xs tracking-widest">
@@ -126,7 +139,8 @@ export default function VisaoGeralPage() {
           </div>
           <button 
             onClick={handleCopy}
-            className="bg-slate-900 border border-white/10 text-white hover:bg-slate-800 font-bold text-xs px-4 py-3 rounded-xl transition-all flex items-center gap-2 w-full sm:w-auto justify-center min-w-[100px]"
+            disabled={!referralLink}
+            className="bg-slate-900 border border-white/10 text-white hover:bg-slate-800 font-bold text-xs px-4 py-3 rounded-xl transition-all flex items-center gap-2 w-full sm:w-auto justify-center min-w-[100px] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {copied ? <Check size={14} /> : <Copy size={14} />}
             {copied ? "Copiado!" : "Copiar"}

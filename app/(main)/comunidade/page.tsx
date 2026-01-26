@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { MessageSquare, Heart, Share2, Send, Crown, Medal, Trophy, Sparkles } from "lucide-react";
+import { MessageSquare, Heart, Share2, Send, Crown, Medal, Trophy, Sparkles, Instagram, MessageCircle } from "lucide-react";
 
 export default function ComunidadePage() {
   const [activeTab, setActiveTab] = useState<"feed" | "ranking">("feed");
@@ -67,25 +67,22 @@ export default function ComunidadePage() {
           // Buscar TODOS os Distribuidores
           query = supabase
             .from("profiles")
-            .select("*")
-            .eq("work_type", "Distribuidor")
-            .order("coins", { ascending: false });
+            .select("*, coins, personal_coins")
+            .eq("work_type", "Distribuidor");
         } else {
           // Buscar TODOS os Profissionais (excluir Distribuidores)
           query = supabase
             .from("profiles")
-            .select("*")
-            .neq("work_type", "Distribuidor")
-            .order("coins", { ascending: false });
+            .select("*, coins, personal_coins")
+            .neq("work_type", "Distribuidor");
         }
       } else {
         // Cenário B: Se é Cabeleireiro ou Embaixador
         // Buscar Ranking Geral completo (excluir Distribuidores)
         query = supabase
           .from("profiles")
-          .select("*")
-          .neq("work_type", "Distribuidor")
-          .order("coins", { ascending: false });
+          .select("*, coins, personal_coins")
+          .neq("work_type", "Distribuidor");
       }
 
       const { data, error } = await query;
@@ -113,11 +110,37 @@ export default function ComunidadePage() {
 
       console.log(`Ranking carregado: ${data.length} usuários encontrados`);
       
-      const rankingData = data.map((user: any, index: number) => ({
+      // Calcular total_score para cada usuário (coins + personal_coins)
+      const rankingDataWithScore = data.map((user: any) => {
+        const coins = user.coins || 0;
+        const personalCoins = user.personal_coins || 0;
+        const totalScore = coins + personalCoins;
+        
+        return {
+          ...user,
+          totalScore,
+          coins,
+          personalCoins,
+        };
+      });
+      
+      // Ordenar por total_score (do maior para o menor)
+      rankingDataWithScore.sort((a: any, b: any) => b.totalScore - a.totalScore);
+      
+      // Adicionar posição após ordenação
+      const rankingData = rankingDataWithScore.map((user: any, index: number) => ({
         ...user,
         position: index + 1,
-        totalPros: user.coins || 0,
+        totalPros: user.totalScore, // Usar totalScore para exibição
       }));
+      
+      console.log("Ranking ordenado por total_score:", rankingData.slice(0, 5).map((u: any) => ({
+        nome: u.full_name,
+        coins: u.coins,
+        personal_coins: u.personal_coins,
+        totalScore: u.totalScore,
+        position: u.position
+      })));
       
       setRanking(rankingData);
     }
@@ -188,6 +211,20 @@ export default function ComunidadePage() {
 
   const formatNumber = (num: number) => {
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  };
+
+  // Função para formatar link do Instagram
+  const getInstagramLink = (instagram: string | null) => {
+    if (!instagram) return null;
+    const handle = instagram.replace(/^@/, ""); // Remove @ se existir
+    return `https://instagram.com/${handle}`;
+  };
+
+  // Função para formatar link do WhatsApp
+  const getWhatsAppLink = (phone: string | null) => {
+    if (!phone) return null;
+    const cleanPhone = phone.replace(/\s|\(|\)|-/g, ""); // Remove espaços, parênteses e traços
+    return `https://wa.me/55${cleanPhone}`;
   };
 
   return (
@@ -437,15 +474,45 @@ export default function ComunidadePage() {
                         )}
                       </div>
 
-                      {/* Nome e PROs */}
+                      {/* Nome e Profissão */}
                       <div className="flex-1 min-w-0">
-                        <p
-                          className={`text-lg font-black ${
-                            isFirst ? "text-[#C9A66B]" : "text-white"
-                          }`}
-                        >
-                          {user.full_name || "Membro MASC"}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p
+                            className={`text-lg font-black ${
+                              isFirst ? "text-[#C9A66B]" : "text-white"
+                            }`}
+                          >
+                            {user.full_name || "Membro MASC"}
+                          </p>
+                          {/* Botões de Ação Social */}
+                          <div className="flex items-center gap-1.5">
+                            {/* Botão Instagram */}
+                            {user.instagram && (
+                              <a
+                                href={getInstagramLink(user.instagram) || "#"}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1.5 text-slate-400 hover:text-pink-500 transition-colors rounded-lg hover:bg-pink-500/10"
+                                title={`Instagram: @${user.instagram.replace(/^@/, "")}`}
+                              >
+                                <Instagram size={16} />
+                              </a>
+                            )}
+                            
+                            {/* Botão WhatsApp */}
+                            {user.phone && (
+                              <a
+                                href={getWhatsAppLink(user.phone) || "#"}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1.5 text-slate-400 hover:text-emerald-500 transition-colors rounded-lg hover:bg-emerald-500/10"
+                                title={`WhatsApp: ${user.phone}`}
+                              >
+                                <MessageCircle size={16} />
+                              </a>
+                            )}
+                          </div>
+                        </div>
                         <p className="text-xs text-slate-500 uppercase tracking-tight mt-0.5">
                           {getRoleLabel(user)}
                         </p>
@@ -511,6 +578,35 @@ export default function ComunidadePage() {
                       <p className="text-sm font-black text-[#C9A66B]">
                         {formatNumber(user.totalPros)} PRO
                       </p>
+                    </div>
+
+                    {/* Botões de Ação Social */}
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {/* Botão Instagram */}
+                      {user.instagram && (
+                        <a
+                          href={getInstagramLink(user.instagram) || "#"}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1.5 text-slate-400 hover:text-pink-500 transition-colors rounded-lg hover:bg-pink-500/10"
+                          title={`Instagram: @${user.instagram.replace(/^@/, "")}`}
+                        >
+                          <Instagram size={16} />
+                        </a>
+                      )}
+                      
+                      {/* Botão WhatsApp */}
+                      {user.phone && (
+                        <a
+                          href={getWhatsAppLink(user.phone) || "#"}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1.5 text-slate-400 hover:text-emerald-500 transition-colors rounded-lg hover:bg-emerald-500/10"
+                          title={`WhatsApp: ${user.phone}`}
+                        >
+                          <MessageCircle size={16} />
+                        </a>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -2,7 +2,7 @@
 
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useEffect, useState } from "react";
-import { Copy, UserPlus, CheckCircle, TrendingUp, Search, Filter } from "lucide-react";
+import { Copy, UserPlus, CheckCircle, TrendingUp, Search, Filter, Instagram, MessageCircle } from "lucide-react";
 
 export default function RedePage() {
   const [indicados, setIndicados] = useState<any[]>([]);
@@ -10,7 +10,6 @@ export default function RedePage() {
   const [inviteLink, setInviteLink] = useState<string>("");
   const [copied, setCopied] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [userProfile, setUserProfile] = useState<any>(null);
   const supabase = createClientComponentClient();
 
   useEffect(() => {
@@ -19,18 +18,10 @@ export default function RedePage() {
       if (session) {
         setUserId(session.user.id);
         
-        // Buscar perfil do usuário logado
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("full_name")
-          .eq("id", session.user.id)
-          .single();
-        setUserProfile(profile);
-        
         // Buscar indicados
         const { data } = await supabase
           .from("profiles")
-          .select("full_name, created_at, city_state, specialty")
+          .select("full_name, created_at, city_state, specialty, instagram, phone")
           .eq('invited_by', session.user.id)
           .order('created_at', { ascending: false });
         if (data) setIndicados(data);
@@ -85,6 +76,20 @@ export default function RedePage() {
   const filteredIndicados = indicados.filter(indicado => 
     indicado.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Função para formatar link do Instagram
+  const getInstagramLink = (instagram: string | null) => {
+    if (!instagram) return null;
+    const handle = instagram.replace(/^@/, ""); // Remove @ se existir
+    return `https://instagram.com/${handle}`;
+  };
+
+  // Função para formatar link do WhatsApp
+  const getWhatsAppLink = (phone: string | null) => {
+    if (!phone) return null;
+    const cleanPhone = phone.replace(/\s|\(|\)|-/g, ""); // Remove espaços, parênteses e traços
+    return `https://wa.me/55${cleanPhone}`;
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">
@@ -150,9 +155,7 @@ export default function RedePage() {
             </div>
             <div>
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">PROS GERADOS</p>
-              <p className="text-3xl font-black text-white">
-                {userProfile?.full_name?.toLowerCase().includes("marcus paulo") ? "0 PRO" : `${indicados.length * 50} PRO`}
-              </p>
+              <p className="text-3xl font-black text-white">{indicados.length * 50} PRO</p>
             </div>
           </div>
         </div>
@@ -212,8 +215,35 @@ export default function RedePage() {
                   </div>
                 </div>
                 
-                {/* Badge ATIVO */}
-                <div className="flex-shrink-0">
+                {/* Botões de Ação Social e Badge ATIVO */}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {/* Botão Instagram */}
+                  {indicado.instagram && (
+                    <a
+                      href={getInstagramLink(indicado.instagram) || "#"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 text-slate-400 hover:text-pink-500 transition-colors rounded-lg hover:bg-pink-500/10"
+                      title={`Instagram: @${indicado.instagram.replace(/^@/, "")}`}
+                    >
+                      <Instagram size={18} />
+                    </a>
+                  )}
+                  
+                  {/* Botão WhatsApp */}
+                  {indicado.phone && (
+                    <a
+                      href={getWhatsAppLink(indicado.phone) || "#"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 text-slate-400 hover:text-emerald-500 transition-colors rounded-lg hover:bg-emerald-500/10"
+                      title={`WhatsApp: ${indicado.phone}`}
+                    >
+                      <MessageCircle size={18} />
+                    </a>
+                  )}
+                  
+                  {/* Badge ATIVO */}
                   <span className="bg-green-500/20 text-green-400 px-4 py-1.5 rounded-lg text-xs font-bold uppercase">
                     ATIVO
                   </span>

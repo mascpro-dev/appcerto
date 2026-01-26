@@ -29,21 +29,32 @@ export default function CadastroPage() {
   const [loading, setLoading] = useState(false);
   const [loadingCep, setLoadingCep] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isValidInvite, setIsValidInvite] = useState(false);
   
   const numberInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const supabase = createClientComponentClient();
 
-  // 1. CAPTURA DO CÓDIGO DE REFERÊNCIA DA URL (?ref=...)
+  // 1. CAPTURA DO CÓDIGO DE REFERÊNCIA DA URL (?ref=...) E VALIDAÇÃO DE CONVITE
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const refCode = params.get("ref");
-      if (refCode) {
+      
+      // Verifica se existe ref na URL OU masc_referrer no localStorage
+      const hasRefInUrl = !!refCode;
+      const hasRefInStorage = !!localStorage.getItem("masc_referrer");
+      
+      if (hasRefInUrl) {
         localStorage.setItem("masc_referrer", refCode);
         console.log("Código de referência salvo no localStorage:", refCode);
         // Limpa a URL para ficar profissional
         window.history.replaceState({}, '', window.location.pathname);
+        setIsValidInvite(true);
+      } else if (hasRefInStorage) {
+        setIsValidInvite(true);
+      } else {
+        setIsValidInvite(false);
       }
     }
   }, []);
@@ -224,6 +235,55 @@ export default function CadastroPage() {
       setLoading(false);
     }
   };
+
+  // Função para recarregar a página (limpa a URL)
+  const handleReload = () => {
+    window.location.href = window.location.pathname;
+  };
+
+  // Tela de Bloqueio (quando não há convite válido)
+  if (!isValidInvite) {
+    return (
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center px-4 py-8">
+        <div className="w-full max-w-md">
+          {/* Cabeçalho */}
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-black italic uppercase tracking-tighter">
+              MASC<span className="text-[#C9A66B]">PRO</span>
+            </h1>
+          </div>
+
+          {/* Card de Bloqueio */}
+          <div className="bg-[#0A0A0A] border border-[#C9A66B]/20 rounded-3xl p-8 space-y-6 text-center">
+            {/* Ícone de Cadeado Dourado */}
+            <div className="flex justify-center">
+              <div className="bg-[#C9A66B]/10 border-2 border-[#C9A66B]/30 rounded-full p-6">
+                <Lock size={64} className="text-[#C9A66B]" />
+              </div>
+            </div>
+
+            {/* Título */}
+            <h2 className="text-2xl font-black text-[#C9A66B] uppercase tracking-tight">
+              Convite Necessário
+            </h2>
+
+            {/* Texto Explicativo */}
+            <p className="text-slate-300 text-sm leading-relaxed">
+              O MASC PRO é uma comunidade exclusiva. Para se cadastrar, você precisa de um Link de Convite válido de um Distribuidor ou Membro.
+            </p>
+
+            {/* Botão */}
+            <button
+              onClick={handleReload}
+              className="w-full bg-[#C9A66B] text-white font-black py-4 rounded-2xl uppercase tracking-widest text-sm hover:opacity-90 transition-all mt-4"
+            >
+              Já tenho um link
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center px-4 py-8">
