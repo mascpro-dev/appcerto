@@ -56,6 +56,65 @@ export default function AulaPlayerPage() {
     return () => clearInterval(interval);
   }, [currentLesson]);
 
+  // PROTEÇÕES ANTI-COMPARTILHAMENTO E BLOQUEIO DE ACESSO EXTERNO
+  useEffect(() => {
+    // Bloqueia botão direito
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      return false;
+    };
+
+    // Bloqueia teclas de atalho (F12, Ctrl+Shift+I, Ctrl+U, etc)
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F12') {
+        e.preventDefault();
+        return false;
+      }
+      if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) {
+        e.preventDefault();
+        return false;
+      }
+      if (e.ctrlKey && (e.key === 'u' || e.key === 's' || e.key === 'p')) {
+        e.preventDefault();
+        return false;
+      }
+    };
+
+    // Bloqueia seleção de texto
+    const handleSelectStart = (e: Event) => {
+      e.preventDefault();
+      return false;
+    };
+
+    // Bloqueia drag and drop
+    const handleDragStart = (e: DragEvent) => {
+      e.preventDefault();
+      return false;
+    };
+
+    // Bloqueia copy
+    const handleCopy = (e: ClipboardEvent) => {
+      e.preventDefault();
+      return false;
+    };
+
+    // Adiciona listeners
+    document.addEventListener('contextmenu', handleContextMenu);
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('selectstart', handleSelectStart);
+    document.addEventListener('dragstart', handleDragStart);
+    document.addEventListener('copy', handleCopy);
+
+    // Limpa listeners ao desmontar
+    return () => {
+      document.removeEventListener('contextmenu', handleContextMenu);
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('selectstart', handleSelectStart);
+      document.removeEventListener('dragstart', handleDragStart);
+      document.removeEventListener('copy', handleCopy);
+    };
+  }, []);
+
   async function pagarRecompensa() {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
@@ -78,7 +137,12 @@ export default function AulaPlayerPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white p-4 md:p-8">
+    <div 
+      className="min-h-screen bg-[#0A0A0A] text-white p-4 md:p-8 select-none"
+      onContextMenu={(e) => e.preventDefault()}
+      onDragStart={(e) => e.preventDefault()}
+      style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
+    >
       
       {/* Topo */}
       <div className="flex justify-between items-center mb-6">
@@ -95,28 +159,52 @@ export default function AulaPlayerPage() {
         
         {/* ÁREA DO PLAYER */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="relative aspect-video bg-black rounded-xl overflow-hidden border border-[#222] shadow-2xl shadow-black group">
+          <div className="relative aspect-video bg-black rounded-xl overflow-hidden border border-[#222] shadow-2xl shadow-black group select-none">
             
-            {/* --- MÁSCARAS INTELIGENTES --- */}
+            {/* --- MÁSCARAS DE PROTEÇÃO AGRESSIVAS --- */}
             
-            {/* 1. Bloqueia Título no Topo (Anti-clique externo) */}
-            <div className="absolute inset-x-0 top-0 h-16 z-20 bg-transparent" />
+            {/* 1. Máscara no topo (bloqueia título e logo YouTube) */}
+            <div 
+              className="absolute inset-x-0 top-0 h-20 z-25 bg-transparent"
+              style={{ pointerEvents: 'auto' }}
+              onClick={(e) => e.stopPropagation()}
+              onContextMenu={(e) => e.preventDefault()}
+            />
             
-            {/* 2. Bloqueia Logo YT no canto INFERIOR ESQUERDO apenas */}
-            <div className="absolute left-0 bottom-10 w-24 h-14 z-20 bg-transparent" />
+            {/* 2. Máscara no canto inferior esquerdo (bloqueia logo YouTube) */}
+            <div 
+              className="absolute left-0 bottom-0 w-32 h-20 z-25 bg-transparent"
+              style={{ pointerEvents: 'auto' }}
+              onClick={(e) => e.stopPropagation()}
+              onContextMenu={(e) => e.preventDefault()}
+            />
             
-            {/* OBS: O Canto INFERIOR DIREITO fica livre para o botão Fullscreen */}
+            {/* 3. Máscara lateral direita (bloqueia botões de compartilhar e "Assistir no YouTube") */}
+            <div 
+              className="absolute right-0 top-0 bottom-0 w-20 z-25 bg-transparent"
+              style={{ pointerEvents: 'auto' }}
+              onClick={(e) => e.stopPropagation()}
+              onContextMenu={(e) => e.preventDefault()}
+            />
 
-            {/* IFRAME */}
+            {/* IFRAME - Fullscreen habilitado, mas sem web-share */}
             <iframe 
-              // fs=1: Habilita botão Fullscreen
-              // rel=0: Mostra apenas vídeos do SEU canal no final
+              // fs=1: Habilita botão Fullscreen (PERMITIDO)
+              // rel=0: Não mostra vídeos relacionados
               // modestbranding=1: Remove logo grande
-              src={`https://www.youtube.com/embed/${currentLesson.video_id}?autoplay=1&mute=1&modestbranding=1&rel=0&controls=1&showinfo=0&fs=1&iv_load_policy=3&disablekb=1`}
+              // disablekb=1: Desabilita teclado (evita atalhos)
+              src={`https://www.youtube.com/embed/${currentLesson.video_id}?autoplay=1&mute=1&modestbranding=1&rel=0&controls=1&showinfo=0&fs=1&iv_load_policy=3&disablekb=1&cc_load_policy=0&playsinline=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}`}
               title="Player MASC PRO"
-              className="w-full h-full object-cover"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen // Habilita a propriedade nativa do navegador
+              className="w-full h-full object-cover pointer-events-auto"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+              allowFullScreen // Habilita fullscreen (PERMITIDO)
+              sandbox="allow-scripts allow-same-origin allow-presentation"
+              style={{ 
+                userSelect: 'none',
+                WebkitUserSelect: 'none',
+                MozUserSelect: 'none',
+                msUserSelect: 'none'
+              }}
             />
           </div>
 
