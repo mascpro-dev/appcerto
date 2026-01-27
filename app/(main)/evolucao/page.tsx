@@ -3,20 +3,19 @@
 import { useEffect, useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import Link from "next/link";
-import { Zap, Trophy, ImageIcon } from "lucide-react";
+import { Zap, Trophy, ImageIcon, Lock } from "lucide-react";
+import { toast } from "sonner"; // Opcional, se não tiver usa alert
 
 export default function EvolucaoPage() {
   const supabase = createClientComponentClient();
-  const [course, setCourse] = useState<any[]>([]);
+  const [courses, setCourses] = useState<any[]>([]);
   const [totalBalance, setTotalBalance] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        console.log("Iniciando carregamento...");
-
-        // 1. Busca Saldo
+        // 1. Saldo
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           const { data: profile } = await supabase
@@ -30,31 +29,28 @@ export default function EvolucaoPage() {
           }
         }
 
-        // 2. Busca Cursos (CORRIGIDO PARA SINGULAR: 'course')
-        // O erro dizia que a tabela certa é 'course'
-        const { data: coursesData, error } = await supabase
+        // 2. Cursos (Ordenados por data: O mais antigo aparece primeiro)
+        const { data: coursesData } = await supabase
           .from("course") 
           .select("*")
           .order("created_at", { ascending: true });
 
-        if (error) {
-          console.error("Erro Supabase:", error);
-          // Tentativa de emergência: se falhar, tenta sem ordenar
-          const { data: retry } = await supabase.from("course").select("*");
-          if (retry) setCourse(retry);
-        } else {
-          setCourse(coursesData || []);
-        }
+        setCourses(coursesData || []);
 
       } catch (e) {
-        console.error("Erro fatal:", e);
+        console.error("Erro:", e);
       } finally {
         setLoading(false);
       }
     }
-
     fetchData();
   }, [supabase]);
+
+  // Função para lidar com o clique nos cursos bloqueados
+  const handleLockedClick = (e: React.MouseEvent) => {
+    e.preventDefault(); // Impede a navegação
+    alert("🚧 Em breve teremos este curso liberado!");
+  };
 
   return (
     <div className="p-6 md:p-10 min-h-screen bg-[#000000] text-white font-sans">
@@ -87,42 +83,80 @@ export default function EvolucaoPage() {
       {/* Grid de Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         
-        {!loading && course.length === 0 && (
+        {!loading && courses.length === 0 && (
             <div className="col-span-3 text-center py-10 text-gray-500 border border-gray-800 rounded-lg">
-                Nenhum curso encontrado na tabela 'course'.
+                Nenhum curso encontrado.
             </div>
         )}
 
-        {course.map((c) => (
-          // Usa c.code se existir, senão usa c.id para o link não quebrar
-          <Link href={`/evolucao/${c.code || c.id}`} key={c.id} className="block group">
-            <div className="relative h-[320px] rounded-2xl overflow-hidden border border-[#1F2937] transition-all duration-300 hover:border-[#C9A66B]/50 hover:shadow-lg hover:shadow-[#C9A66B]/10">
-              
-              <div className="absolute inset-0 bg-gradient-to-b from-[#111827] to-[#050505] z-0" />
+        {courses.map((c) => {
+          // Lógica de Bloqueio: Só libera se o código for MOD_VENDAS
+          const isUnlocked = c.code === 'MOD_VENDAS';
 
-              <div className="absolute top-6 left-6 z-10">
-                <span className="bg-[#D1C4A9] text-black text-[10px] font-bold px-3 py-1.5 rounded-md uppercase tracking-wide">
-                  {c.code ? `MÓDULO ${c.code.replace('MOD_', '')}` : 'MÓDULO'}
-                </span>
-              </div>
+          return (
+            <Link 
+              href={isUnlocked ? `/evolucao/${c.code}` : '#'} 
+              key={c.id} 
+              onClick={!isUnlocked ? handleLockedClick : undefined}
+              className={`block group relative ${!isUnlocked ? 'cursor-not-allowed' : ''}`}
+            >
+              <div className={`relative h-[320px] rounded-2xl overflow-hidden border transition-all duration-300 
+                ${isUnlocked 
+                  ? 'border-[#1F2937] hover:border-[#C9A66B]/50 hover:shadow-lg hover:shadow-[#C9A66B]/10' 
+                  : 'border-[#1F2937] opacity-60 grayscale-[0.8] hover:grayscale-0'
+                }`}
+              >
+                
+                <div className="absolute inset-0 bg-gradient-to-b from-[#111827] to-[#050505] z-0" />
 
-              <div className="absolute inset-0 flex items-center justify-center z-10 opacity-10 group-hover:opacity-20 transition-opacity">
-                <ImageIcon className="w-24 h-24 text-white" />
-              </div>
-
-              <div className="absolute bottom-0 inset-x-0 p-6 z-10">
-                <h3 className="text-xl font-bold text-white mb-3 leading-tight">
-                  {c.title}
-                </h3>
-                <div className="flex items-center gap-2 text-white/90 text-sm font-medium">
-                  <Zap className="w-4 h-4 text-[#C9A66B] fill-[#C9A66B]" />
-                  <span>Ganhe {c.reward_amount || 50} PRO</span>
+                {/* Etiqueta Superior */}
+                <div className="absolute top-6 left-6 z-10">
+                  <span className={`text-[10px] font-bold px-3 py-1.5 rounded-md uppercase tracking-wide
+                    ${isUnlocked ? 'bg-[#D1C4A9] text-black' : 'bg-gray-800 text-gray-400'}`}>
+                    {c.code && c.code.includes('MOD_') ? `MÓDULO ${c.code.replace('MOD_', '')}` : 'CURSO'}
+                  </span>
                 </div>
-              </div>
 
-            </div>
-          </Link>
-        ))}
+                {/* Ícone Central (Cadeado se bloqueado) */}
+                <div className="absolute inset-0 flex items-center justify-center z-10 opacity-10 group-hover:opacity-20 transition-opacity">
+                  {isUnlocked ? (
+                    <ImageIcon className="w-24 h-24 text-white" />
+                  ) : (
+                    <Lock className="w-24 h-24 text-gray-500" />
+                  )}
+                </div>
+
+                {/* Rodapé do Card */}
+                <div className="absolute bottom-0 inset-x-0 p-6 z-10">
+                  
+                  <h3 className="text-xl font-bold text-white leading-tight">
+                    {c.title}
+                  </h3>
+                  
+                  {/* Autor (Descrição) */}
+                  <p className="text-sm text-gray-400 font-medium mt-1 mb-3 italic">
+                    {c.description || 'por Marcelo Conelheiros'}
+                  </p>
+
+                  <div className="flex items-center gap-2 text-white/90 text-sm font-medium">
+                    {isUnlocked ? (
+                      <>
+                        <Zap className="w-4 h-4 text-[#C9A66B] fill-[#C9A66B]" />
+                        <span>Ganhe {c.reward_amount || 50} PRO</span>
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="w-4 h-4 text-gray-500" />
+                        <span className="text-gray-500">Em breve</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            </Link>
+          );
+        })}
       </div>
     </div>
   );
