@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useParams } from "next/navigation";
 import { ArrowLeft, Play, Loader2, Save } from "lucide-react";
@@ -15,12 +15,13 @@ export default function AulaPlayerPage() {
   const [currentLesson, setCurrentLesson] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   
-  // Timer para Recompensa (Dinheiro) - Reinicia a cada sessão
+  // Timer de Sessão (Dinheiro)
   const [sessionSeconds, setSessionSeconds] = useState(0);
 
-  // Timer do Vídeo (Progresso) - Carrega do banco e acumula
+  // Timer de Progresso (Memória do Vídeo)
   const [videoStartSeconds, setVideoStartSeconds] = useState(0); 
   const [currentVideoTime, setCurrentVideoTime] = useState(0);
+  const [isReadyToPlay, setIsReadyToPlay] = useState(false);
 
   // 1. Busca Aulas
   useEffect(() => {
@@ -35,7 +36,7 @@ export default function AulaPlayerPage() {
 
         if (data && data.length > 0) {
           setLessons(data);
-          // Por padrão pega a primeira, mas vamos checar o progresso depois
+          // Define a primeira aula como inicial
           setCurrentLesson(data[0]);
         }
       } catch (err) {
@@ -47,10 +48,13 @@ export default function AulaPlayerPage() {
     if (courseCode) fetchLessons();
   }, [courseCode, supabase]);
 
-  // 2. Quando mudar de aula, busca onde parou (Progresso)
+  // 2. Ao carregar a aula, busca no banco onde parou
   useEffect(() => {
     async function loadProgress() {
         if (!currentLesson) return;
+        
+        setIsReadyToPlay(false); // Segura o vídeo enquanto busca
+        setSessionSeconds(0);
 
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
@@ -61,41 +65,38 @@ export default function AulaPlayerPage() {
                 .eq("lesson_id", currentLesson.id)
                 .single();
             
-            // Se achou progresso, define o ponto de partida
             const savedTime = data?.seconds_watched || 0;
             setVideoStartSeconds(savedTime);
             setCurrentVideoTime(savedTime);
-            setSessionSeconds(0); // Zera o contador de dinheiro da sessão atual
+            setIsReadyToPlay(true); // Libera o player com o tempo certo
         }
     }
     loadProgress();
   }, [currentLesson, supabase]);
 
-  // 3. O Relógio (Roda a cada 1 segundo)
+  // 3. Relógio (Conta tempo para dinheiro e progresso)
   useEffect(() => {
-    if (!currentLesson) return;
+    if (!currentLesson || !isReadyToPlay) return;
 
     const interval = setInterval(() => {
-      // Atualiza tempo de sessão (para ganhar dinheiro)
+      // Dinheiro (Sessão)
       setSessionSeconds((prev) => {
         const novo = prev + 1;
-        // A cada 15 min de sessão (900s), paga
         if (novo > 0 && novo % 900 === 0) pagarRecompensa(); 
         return novo;
       });
 
-      // Atualiza tempo total do vídeo (para salvar onde parou)
+      // Progresso (Total Vídeo)
       setCurrentVideoTime((prev) => prev + 1);
 
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [currentLesson]);
+  }, [currentLesson, isReadyToPlay]);
 
-  // 4. Salvar Progresso Automaticamente (A cada 10 segundos)
+  // 4. Salva no banco a cada 10 segundos
   useEffect(() => {
     if (!currentLesson) return;
-
     const saveInterval = setInterval(async () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (user && currentVideoTime > 0) {
@@ -106,16 +107,16 @@ export default function AulaPlayerPage() {
                 last_updated: new Date().toISOString()
             });
         }
-    }, 10000); // Salva a cada 10s
-
+    }, 10000);
     return () => clearInterval(saveInterval);
   }, [currentVideoTime, currentLesson, supabase]);
 
   async function pagarRecompensa() {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
+      // Chama a função V2 que criamos (com regras novas)
       await supabase.rpc('reward_watch_time_v2', { user_id: user.id });
-      console.log("💰 Dinheiro pago por tempo de aula!");
+      console.log("💰 Dinheiro pago!");
     }
   }
 
@@ -127,7 +128,7 @@ export default function AulaPlayerPage() {
 
   if (!currentLesson) return (
     <div className="min-h-screen bg-[#0A0A0A] p-10 text-white text-center">
-        <h2 className="text-xl font-bold mb-2">Nenhuma aula encontrada.</h2>
+        <h2 className="text-xl font-bold mb-2">Aula indisponível.</h2>
         <Link href="/evolucao" className="text-[#C9A66B] hover:underline">Voltar</Link>
     </div>
   );
@@ -142,9 +143,8 @@ export default function AulaPlayerPage() {
           <span className="font-bold text-sm tracking-wide">VOLTAR</span>
         </Link>
         <div className="flex items-center gap-3">
-             {/* Indicador de Salvamento */}
              <div className="flex items-center gap-1 text-[10px] text-gray-600">
-                <Save size={10} /> Salvo: {Math.floor(currentVideoTime / 60)}min
+                <Save size={10} /> {Math.floor(currentVideoTime / 60)}min salvos
              </div>
             <div className="bg-[#C9A66B]/10 text-[#C9A66B] border border-[#C9A66B]/30 px-4 py-1.5 rounded text-xs font-bold tracking-widest animate-pulse">
             VALENDO PRO
@@ -154,31 +154,43 @@ export default function AulaPlayerPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* ÁREA DO PLAYER */}
+        {/* ÁREA DO PLAYER (BLINDADA) */}
         <div className="lg:col-span-2 space-y-4">
           <div className="relative aspect-video bg-black rounded-xl overflow-hidden border border-[#222] shadow-2xl shadow-black group">
             
-            {/* Máscaras de Proteção */}
+            {/* --- AS TRAVAS DE SEGURANÇA VOLTARAM --- */}
+            {/* 1. Máscara Superior: Bloqueia clique no Título do vídeo */}
             <div className="absolute inset-x-0 top-0 h-16 z-20 bg-transparent" />
-            <div className="absolute left-0 bottom-10 w-24 h-14 z-20 bg-transparent" />
             
-            {/* IFRAME COM INÍCIO AUTOMÁTICO DE ONDE PAROU */}
-            {/* Adicionamos &start=${videoStartSeconds} na URL */}
-            <iframe 
-              key={currentLesson.id} // Força recarregar o iframe ao mudar de aula
-              src={`https://www.youtube.com/embed/${currentLesson.video_id}?start=${videoStartSeconds}&autoplay=1&mute=1&modestbranding=1&rel=0&controls=1&showinfo=0&fs=1&iv_load_policy=3&disablekb=1`}
-              title="Player MASC PRO"
-              className="w-full h-full object-cover"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen 
-            />
+            {/* 2. Máscara Inferior Esquerda: Bloqueia logo do YouTube, mas deixa o Play/Volume livres se possível, 
+                   ou cobre tudo exceto Tela Cheia. Ajustei para cobrir canto esquerdo inferior. */}
+            <div className="absolute left-0 bottom-10 w-20 h-16 z-20 bg-transparent" />
+
+            {/* IFRAME INTELIGENTE */}
+            {/* O segredo: 'key' força recarregar quando o tempo muda */}
+            {isReadyToPlay && (
+                <iframe 
+                key={`${currentLesson.id}-${videoStartSeconds}`} 
+                src={`https://www.youtube.com/embed/${currentLesson.video_id}?start=${videoStartSeconds}&autoplay=1&mute=0&modestbranding=1&rel=0&controls=1&showinfo=0&fs=1&iv_load_policy=3&disablekb=1`}
+                title="Player MASC PRO"
+                className="w-full h-full object-cover"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen 
+                />
+            )}
+            {!isReadyToPlay && (
+                <div className="w-full h-full flex items-center justify-center bg-black text-gray-500">
+                    <Loader2 className="animate-spin" />
+                </div>
+            )}
+
           </div>
 
           <div className="flex justify-between items-start">
             <div>
                 <h1 className="text-2xl font-bold text-white">{currentLesson.title}</h1>
                 <p className="text-gray-500 text-sm mt-1">
-                Tempo na sessão: <span className="text-[#C9A66B] font-bold">{Math.floor(sessionSeconds / 60)} min</span>
+                Tempo nesta sessão: <span className="text-[#C9A66B] font-bold">{Math.floor(sessionSeconds / 60)} min</span>
                 </p>
             </div>
           </div>
@@ -196,11 +208,9 @@ export default function AulaPlayerPage() {
                 <button
                   key={lesson.id}
                   onClick={() => {
-                    // Ao trocar de aula, atualiza o estado para carregar o novo progresso
-                    setVideoStartSeconds(0); 
-                    setCurrentVideoTime(0);
+                    // Reset total ao mudar de aula
+                    setIsReadyToPlay(false);
                     setCurrentLesson(lesson);
-                    setSessionSeconds(0);
                   }}
                   className={`w-full flex items-start gap-3 p-3 rounded-lg text-left transition-all border ${
                     isActive 
