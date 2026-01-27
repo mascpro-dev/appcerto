@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import Link from "next/link";
 import { Zap, Trophy, ImageIcon, Lock } from "lucide-react";
-import { toast } from "sonner"; // Opcional, se não tiver usa alert
 
 export default function EvolucaoPage() {
   const supabase = createClientComponentClient();
@@ -29,7 +28,7 @@ export default function EvolucaoPage() {
           }
         }
 
-        // 2. Cursos (Ordenados por data: O mais antigo aparece primeiro)
+        // 2. Cursos (Ordenados por data)
         const { data: coursesData } = await supabase
           .from("course") 
           .select("*")
@@ -117,7 +116,7 @@ export default function EvolucaoPage() {
                   </span>
                 </div>
 
-                {/* Ícone Central (Cadeado se bloqueado) */}
+                {/* Ícone Central */}
                 <div className="absolute inset-0 flex items-center justify-center z-10 opacity-10 group-hover:opacity-20 transition-opacity">
                   {isUnlocked ? (
                     <ImageIcon className="w-24 h-24 text-white" />
