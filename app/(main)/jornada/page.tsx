@@ -1,248 +1,187 @@
 "use client";
 
-import { Shield, Star, Award, GraduationCap, Lock, CheckCircle, Mail } from "lucide-react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { CheckCircle2, Lock, Share2, Crown, Shield, Zap } from "lucide-react";
+
+// --- TRILHA 1: TÉCNICA (Baseada em PROs) ---
+const PLACAS_TECNICAS = [
+  { limit: 10000, title: "Profissional em Construção", color: "text-green-500", border: "border-green-500/30", iconBg: "bg-green-500/10" },
+  { limit: 50000, title: "Profissional Validado", color: "text-blue-500", border: "border-blue-500/30", iconBg: "bg-blue-500/10" },
+  { limit: 150000, title: "Referência Técnica", color: "text-purple-500", border: "border-purple-500/30", iconBg: "bg-purple-500/10" },
+  { limit: 250000, title: "Formador de Profissionais", color: "text-orange-500", border: "border-orange-500/30", iconBg: "bg-orange-500/10" },
+  { limit: 500000, title: "Educador Masc Pro", color: "text-red-600", border: "border-red-600/30", iconBg: "bg-red-600/10" },
+];
+
+// --- TRILHA 2: EMBAIXADORES (Baseada em Indicações) ---
+const NIVEIS_EMBAIXADOR = [
+  { limit: 5, title: "Embaixador Start", color: "text-gray-300", border: "border-gray-500", icon: Share2, desc: "Iniciou sua rede (5 convites)." },
+  { limit: 20, title: "Embaixador Bronze", color: "text-amber-700", border: "border-amber-700", icon: Shield, desc: "Influência local (20 convites)." },
+  { limit: 50, title: "Embaixador Prata", color: "text-gray-400", border: "border-gray-400", icon: Shield, desc: "Líder de comunidade (50 convites)." },
+  { limit: 100, title: "Embaixador Gold", color: "text-yellow-400", border: "border-yellow-400", icon: Crown, desc: "Referência no movimento (100 convites)." },
+  { limit: 500, title: "Embaixador Black", color: "text-white", border: "border-white", icon: Crown, desc: "Lenda do MASC PRO (500 convites)." },
+];
 
 export default function JornadaPage() {
   const supabase = createClientComponentClient();
-  const router = useRouter();
+  
+  const [totalBalance, setTotalBalance] = useState(0);
+  const [referralCount, setReferralCount] = useState(0); // Número de indicados
   const [loading, setLoading] = useState(true);
-  const [isEmbaixador, setIsEmbaixador] = useState(false);
-  const [requestSent, setRequestSent] = useState(false);
 
   useEffect(() => {
-    async function checkUser() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        const { data: profile } = await supabase
+    async function fetchData() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // 1. Busca Saldo (Para trilha Técnica)
+        const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+        if (profile) setTotalBalance((profile.coins || 0) + (profile.personal_coins || 0));
+
+        // 2. Busca Contagem de Convidados (Para trilha Embaixador)
+        // Conta quantas pessoas têm o campo "invited_by" igual ao meu ID
+        const { count, error } = await supabase
           .from("profiles")
-          .select("role, work_type")
-          .eq("id", session.user.id)
-          .single();
+          .select("*", { count: 'exact', head: true })
+          .eq("invited_by", user.id);
         
-        // Verifica se é embaixador
-        const embaixador = profile?.role === "embaixador" || profile?.work_type === "embaixador" || 
-                          profile?.role === "EMBAIXADOR" || profile?.work_type === "EMBAIXADOR";
-        
-        setIsEmbaixador(embaixador || false);
-      } else {
-        router.push("/login");
+        if (!error) setReferralCount(count || 0);
       }
       setLoading(false);
     }
-    checkUser();
-  }, [supabase, router]);
-
-  const handleRequestEmbaixador = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      // Aqui você pode adicionar lógica para salvar a solicitação no banco de dados
-      // Por exemplo, criar uma tabela de solicitações ou enviar um email
-      setRequestSent(true);
-      
-      // Exemplo: salvar solicitação (descomente se tiver uma tabela para isso)
-      // await supabase.from("embaixador_requests").insert({
-      //   user_id: session.user.id,
-      //   status: "pending"
-      // });
-    }
-  };
+    fetchData();
+  }, [supabase]);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
+      <div className="min-h-screen bg-[#000000] flex items-center justify-center">
         <div className="text-white/60">Carregando...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] space-y-12 animate-in fade-in duration-700 pb-24">
+    <div className="p-6 md:p-10 min-h-screen bg-[#000000] text-white font-sans">
       
-      {/* CABEÇALHO */}
-      <div className="space-y-3">
-        <h1 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tight leading-tight">
-          MINHA JORNADA
+      <div className="mb-10">
+        <h1 className="text-3xl font-extrabold italic tracking-wide">
+          SUA CARREIRA <span className="text-[#C9A66B]">360º</span>
         </h1>
-        <p className="text-white/70 text-sm md:text-base font-medium">
-          Progressão formal e autoridade real no ecossistema MASC PRO.
+        <p className="text-gray-400 mt-2 text-sm">
+          Acompanhe sua evolução técnica e seu poder de influência.
         </p>
       </div>
 
-      {/* SEÇÃO 1: LISTA DE PROGRESSO (VERTICAL) */}
-      <div className="space-y-4">
-        {/* CERTIFIED */}
-        <div className={`bg-[#111] border rounded-xl p-5 flex items-center justify-between ${
-          isEmbaixador 
-            ? "border-white/10" 
-            : "border-white/5 opacity-60"
-        }`}>
-          <div className="flex items-center gap-4">
-            <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-              isEmbaixador 
-                ? "bg-[#C9A66B] text-black" 
-                : "bg-zinc-900 text-zinc-600"
-            }`}>
-              <Shield size={24} />
-            </div>
-            <div>
-              <h3 className={`font-black text-lg uppercase tracking-tight ${
-                isEmbaixador ? "text-white" : "text-zinc-600"
-              }`}>CERTIFIED</h3>
-              <p className={`text-xs mt-1 ${
-                isEmbaixador ? "text-white/60" : "text-zinc-700"
-              }`}>Fundação técnica e cultural.</p>
-            </div>
-          </div>
-          {!isEmbaixador && <Lock size={20} className="text-zinc-700" />}
-        </div>
-
-        {/* EXPERT */}
-        <div className={`bg-[#111] border rounded-xl p-5 flex items-center justify-between ${
-          isEmbaixador 
-            ? "border-white/10" 
-            : "border-white/5 opacity-60"
-        }`}>
-          <div className="flex items-center gap-4">
-            <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-              isEmbaixador 
-                ? "bg-white text-black" 
-                : "bg-zinc-900 text-zinc-600"
-            }`}>
-              <Star size={24} />
-            </div>
-            <div>
-              <h3 className={`font-black text-lg uppercase tracking-tight ${
-                isEmbaixador ? "text-white" : "text-zinc-600"
-              }`}>EXPERT</h3>
-              <p className={`text-xs mt-1 ${
-                isEmbaixador ? "text-white/60" : "text-zinc-700"
-              }`}>Domínio avançado.</p>
-            </div>
-          </div>
-          {!isEmbaixador && <Lock size={20} className="text-zinc-700" />}
-        </div>
-
-        {/* MASTER TÉCNICO - Bloqueado */}
-        <div className="bg-[#111] border border-white/5 rounded-xl p-5 flex items-center justify-between opacity-60">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-lg bg-zinc-900 text-zinc-600 flex items-center justify-center">
-              <Award size={24} />
-            </div>
-            <div>
-              <h3 className="font-black text-zinc-600 text-lg uppercase tracking-tight">MASTER TÉCNICO</h3>
-              <p className="text-xs text-zinc-700 mt-1">Autoridade técnica.</p>
-            </div>
-          </div>
-          <Lock size={20} className="text-zinc-700" />
-        </div>
-
-        {/* EDUCADOR MASC PRO - Bloqueado */}
-        <div className="bg-[#111] border border-white/5 rounded-xl p-5 flex items-center justify-between opacity-60">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-lg bg-zinc-900 text-zinc-600 flex items-center justify-center">
-              <GraduationCap size={24} />
-            </div>
-            <div>
-              <h3 className="font-black text-zinc-600 text-lg uppercase tracking-tight">EDUCADOR MASC PRO</h3>
-              <p className="text-xs text-zinc-700 mt-1">Formador de novos líderes.</p>
-            </div>
-          </div>
-          <Lock size={20} className="text-zinc-700" />
-        </div>
-      </div>
-
-      {/* BOTÃO PARA SOLICITAR SER EMBAIXADOR (apenas para cabeleireiros) */}
-      {!isEmbaixador && (
-        <div className="bg-[#111] border border-[#C9A66B]/20 rounded-xl p-6 space-y-4">
-          <div className="text-center space-y-2">
-            <h3 className="text-lg font-black text-white uppercase tracking-tight">
-              Torne-se um Embaixador
-            </h3>
-            <p className="text-sm text-white/60">
-              Solicite um convite para se tornar um Embaixador MASC PRO e desbloqueie sua jornada completa.
-            </p>
-          </div>
-          <button
-            onClick={handleRequestEmbaixador}
-            disabled={requestSent}
-            className={`w-full py-4 rounded-xl font-black uppercase tracking-wider transition-all ${
-              requestSent
-                ? "bg-[#C9A66B]/30 text-[#C9A66B] cursor-not-allowed"
-                : "bg-[#C9A66B] text-black hover:bg-[#C9A66B]/90 active:scale-95"
-            }`}
-          >
-            {requestSent ? (
-              <span className="flex items-center justify-center gap-2">
-                <Mail size={18} />
-                Solicitação Enviada
-              </span>
-            ) : (
-              <span className="flex items-center justify-center gap-2">
-                <Mail size={18} />
-                Solicitar Convite para Embaixador
-              </span>
-            )}
-          </button>
-          {requestSent && (
-            <p className="text-xs text-center text-white/50">
-              Sua solicitação foi enviada. Aguarde o contato da equipe MASC PRO.
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* SEÇÃO 2: INTELIGÊNCIA PRO */}
-      <div className="space-y-6">
-        <h2 className="text-2xl md:text-3xl font-black text-[#C9A66B] uppercase tracking-tight">
-          INTELIGÊNCIA PRO
-        </h2>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12">
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Card 1: CABELEIREIRO */}
-          <div className="bg-[#111] border border-white/10 rounded-xl p-6 space-y-5">
-            <span className="inline-block bg-[#8B6F47] text-white text-xs font-black uppercase px-4 py-2 rounded-full">
-              CABELEIREIRO
-            </span>
-            <ul className="space-y-3">
-              <li className="flex gap-3 items-start text-sm text-white/80">
-                <CheckCircle size={18} className="text-[#C9A66B] shrink-0 mt-0.5" />
-                <span>Constância e aplicação técnica</span>
-              </li>
-              <li className="flex gap-3 items-start text-sm text-white/80">
-                <CheckCircle size={18} className="text-[#C9A66B] shrink-0 mt-0.5" />
-                <span>Indicação e Evolução individual</span>
-              </li>
-              <li className="flex gap-3 items-start text-sm text-white/80">
-                <CheckCircle size={18} className="text-[#C9A66B] shrink-0 mt-0.5" />
-                <span>Compra de produtos oficiais</span>
-              </li>
-            </ul>
+        {/* --- COLUNA ESQUERDA: TÉCNICA (PLACAS) --- */}
+        <div>
+          <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[#222]">
+            <Zap className="text-[#C9A66B]" />
+            <div>
+                <h2 className="text-lg font-bold uppercase tracking-widest text-white">Meritocracia Técnica</h2>
+                <p className="text-xs text-gray-500">Baseado em PROs Acumulados</p>
+            </div>
+            <div className="ml-auto bg-[#111] px-3 py-1 rounded text-[#C9A66B] font-bold text-sm">
+                {totalBalance.toLocaleString('pt-BR')} PRO
+            </div>
           </div>
 
-          {/* Card 2: EMBAIXADOR */}
-          <div className="bg-[#111] border border-white/10 rounded-xl p-6 space-y-5">
-            <span className="inline-block bg-[#D4AF37] text-black text-xs font-black uppercase px-4 py-2 rounded-full">
-              EMBAIXADOR
-            </span>
-            <ul className="space-y-3">
-              <li className="flex gap-3 items-start text-sm text-white/80">
-                <Star size={18} className="text-[#C9A66B] shrink-0 mt-0.5 fill-[#C9A66B]" />
-                <span>Responsabilidade e formação de outros</span>
-              </li>
-              <li className="flex gap-3 items-start text-sm text-white/80">
-                <Star size={18} className="text-[#C9A66B] shrink-0 mt-0.5 fill-[#C9A66B]" />
-                <span>Entrega educacional e representação</span>
-              </li>
-              <li className="flex gap-3 items-start text-sm text-white/80">
-                <Star size={18} className="text-[#C9A66B] shrink-0 mt-0.5 fill-[#C9A66B]" />
-                <span>Compra de produtos oficiais</span>
-              </li>
-            </ul>
+          <div className="space-y-4 relative">
+             {/* Linha conectora vertical */}
+            <div className="absolute left-[23px] top-4 bottom-4 w-0.5 bg-[#222] -z-10"></div>
+
+            {PLACAS_TECNICAS.map((placa) => {
+              const isUnlocked = totalBalance >= placa.limit;
+              return (
+                <div 
+                  key={placa.limit}
+                  className={`relative p-4 rounded-xl border flex items-center gap-4 transition-all duration-300 ${
+                    isUnlocked 
+                      ? `${placa.border} bg-[#0A0A0A] opacity-100` 
+                      : "border-[#222] bg-black opacity-50 grayscale"
+                  }`}
+                >
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 border-4 border-black z-10 ${
+                    isUnlocked ? `${placa.iconBg} ${placa.color}` : "bg-[#111] text-gray-600"
+                  }`}>
+                    {isUnlocked ? <CheckCircle2 size={18} /> : <Lock size={18} />}
+                  </div>
+
+                  <div>
+                    <h3 className={`font-bold text-sm md:text-base ${isUnlocked ? placa.color : "text-gray-500"}`}>
+                      {placa.title.toUpperCase()}
+                    </h3>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase">
+                      Meta: {placa.limit.toLocaleString('pt-BR')} PRO
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
+
+        {/* --- COLUNA DIREITA: INFLUÊNCIA (EMBAIXADORES) --- */}
+        <div>
+          <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[#222]">
+            <Crown className="text-blue-400" />
+            <div>
+                <h2 className="text-lg font-bold uppercase tracking-widest text-white">Níveis de Embaixador</h2>
+                <p className="text-xs text-gray-500">Baseado em sua Rede de Indicações</p>
+            </div>
+            <div className="ml-auto bg-[#111] px-3 py-1 rounded text-blue-400 font-bold text-sm">
+                {referralCount} Convites
+            </div>
+          </div>
+
+          <div className="space-y-4 relative">
+             {/* Linha conectora vertical */}
+             <div className="absolute left-[23px] top-4 bottom-4 w-0.5 bg-[#222] -z-10"></div>
+
+            {NIVEIS_EMBAIXADOR.map((nivel) => {
+              const isUnlocked = referralCount >= nivel.limit;
+              const Icon = nivel.icon;
+
+              return (
+                <div 
+                  key={nivel.limit}
+                  className={`relative p-4 rounded-xl border flex items-center gap-4 transition-all duration-300 ${
+                    isUnlocked 
+                      ? `${nivel.border} bg-[#0A0A0A] bg-opacity-20` 
+                      : "border-[#222] bg-black opacity-50"
+                  }`}
+                >
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 border-4 border-black z-10 ${
+                    isUnlocked ? `bg-white/10 ${nivel.color}` : "bg-[#111] text-gray-600"
+                  }`}>
+                     {isUnlocked ? <Icon size={18} /> : <Lock size={18} />}
+                  </div>
+
+                  <div>
+                    <h3 className={`font-bold text-sm md:text-base ${isUnlocked ? nivel.color : "text-gray-500"}`}>
+                      {nivel.title.toUpperCase()}
+                    </h3>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase">
+                      Meta: {nivel.limit} Pessoas na Rede
+                    </p>
+                    <p className="text-[10px] text-gray-600 italic mt-0.5">
+                        {nivel.desc}
+                    </p>
+                  </div>
+                  
+                  {/* Etiqueta se for o nível atual */}
+                  {isUnlocked && referralCount < (NIVEIS_EMBAIXADOR.find(n => n.limit > nivel.limit)?.limit || 9999) && (
+                      <div className="absolute right-4 top-4">
+                          <span className={`text-[10px] font-bold px-2 py-1 rounded border ${nivel.color} ${nivel.border}`}>ATUAL</span>
+                      </div>
+                  )}
+
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
       </div>
     </div>
   );
