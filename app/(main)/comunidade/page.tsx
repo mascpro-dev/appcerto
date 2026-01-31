@@ -40,6 +40,14 @@ export default function ComunidadePage() {
     fetchData();
   }, [rankingFilter, isDistribuidor]);
 
+  // Recarregar posts quando mudar para a aba de feed
+  useEffect(() => {
+    if (activeTab === 'feed' && !loading) {
+      refreshFeed();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
   async function fetchData() {
     try {
       setLoading(true);
@@ -87,21 +95,41 @@ export default function ComunidadePage() {
 
     } catch (error) {
       console.error("Erro ao carregar:", error);
+      setPosts([]);
     } finally {
       setLoading(false);
     }
   }
 
   async function refreshFeed() {
-    const { data: postsData } = await supabase
-      .from("posts")
-      .select(`
-        id, content, image_url, created_at, likes_count,
-        profiles (full_name, avatar_url, role)
-      `)
-      .order("created_at", { ascending: false });
+    try {
+      console.log("🔄 Atualizando feed...");
+      const { data: postsData, error } = await supabase
+        .from("posts")
+        .select(`
+          id, content, image_url, created_at, likes_count,
+          profiles (full_name, avatar_url, role)
+        `)
+        .order("created_at", { ascending: false });
 
-    if (postsData) setPosts(postsData);
+      if (error) {
+        console.error("❌ Erro ao buscar posts:", error);
+        console.error("Detalhes do erro:", JSON.stringify(error, null, 2));
+        setPosts([]);
+        return;
+      }
+
+      console.log("✅ Posts carregados:", postsData?.length || 0);
+      if (postsData) {
+        setPosts(postsData);
+      } else {
+        console.log("⚠️ Nenhum post encontrado");
+        setPosts([]);
+      }
+    } catch (error) {
+      console.error("❌ Erro ao atualizar feed:", error);
+      setPosts([]);
+    }
   }
 
   // --- FUNÇÕES DE CURTIDA (LIKE) ---
@@ -204,8 +232,8 @@ export default function ComunidadePage() {
       alert("Escreva algo ou adicione uma foto!");
       return;
     }
-    if (!currentUser) {
-      alert("Erro de sessão.");
+    if (!currentUser || !currentUser.id) {
+      alert("Erro de sessão. Faça login novamente.");
       return;
     }
 
@@ -217,26 +245,42 @@ export default function ComunidadePage() {
         const fileExt = newPostImage.name.split('.').pop();
         const fileName = `${Date.now()}.${fileExt}`;
         const { error: uploadError } = await supabase.storage.from("feed-images").upload(fileName, newPostImage);
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          console.error("Erro no upload:", uploadError);
+          throw new Error("Erro ao fazer upload da imagem: " + uploadError.message);
+        }
         const { data: { publicUrl } } = supabase.storage.from("feed-images").getPublicUrl(fileName);
         finalImageUrl = publicUrl;
       }
 
-      const { error: dbError } = await supabase.from("posts").insert({
+      console.log("📝 Salvando post no banco...");
+      const { data: newPost, error: dbError } = await supabase.from("posts").insert({
         user_id: currentUser.id,
-        content: newPostText,
+        content: newPostText.trim(),
         image_url: finalImageUrl
-      });
+      }).select().single();
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        console.error("❌ Erro ao salvar post:", dbError);
+        console.error("Detalhes do erro:", JSON.stringify(dbError, null, 2));
+        throw new Error("Erro ao salvar post: " + dbError.message);
+      }
 
+      console.log("✅ Post salvo com sucesso:", newPost);
+
+      // Limpar formulário
       setNewPostText("");
       setNewPostImage(null);
       if (previewUrl) {
         URL.revokeObjectURL(previewUrl);
         setPreviewUrl(null);
       }
+      
+      // Recarregar feed
       await refreshFeed();
+      
+      // Feedback visual
+      console.log("Post publicado com sucesso!");
       
     } catch (error: any) {
       console.error("Erro ao postar:", error);
@@ -495,6 +539,12 @@ export default function ComunidadePage() {
               <div className="text-center text-gray-500 py-10">
                 <p>Ainda não há publicações.</p>
                 <p className="text-xs mt-2">Seja o primeiro a postar!</p>
+                <button
+                  onClick={() => refreshFeed()}
+                  className="mt-4 text-xs text-[#C9A66B] hover:underline"
+                >
+                  Recarregar feed
+                </button>
               </div>
             ) : (
               posts.map((post) => {
