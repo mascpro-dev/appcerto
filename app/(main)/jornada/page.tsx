@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { CheckCircle2, Lock, Share2, Crown, Shield, Zap } from "lucide-react";
+import { CheckCircle2, Lock, Share2, Crown, Shield, Zap, TrendingUp } from "lucide-react";
 
-// --- TRILHA 1: TÉCNICA (Baseada em PROs) ---
+// --- TRILHA 1: TÉCNICA (Baseada em PROs Totais: Ativo + Passivo) ---
 const PLACAS_TECNICAS = [
   { limit: 10000, title: "Profissional em Construção", color: "text-green-500", border: "border-green-500/30", iconBg: "bg-green-500/10" },
   { limit: 50000, title: "Profissional Validado", color: "text-blue-500", border: "border-blue-500/30", iconBg: "bg-blue-500/10" },
@@ -13,7 +13,7 @@ const PLACAS_TECNICAS = [
   { limit: 500000, title: "Educador Masc Pro", color: "text-red-600", border: "border-red-600/30", iconBg: "bg-red-600/10" },
 ];
 
-// --- TRILHA 2: EMBAIXADORES (Baseada em Indicações) ---
+// --- TRILHA 2: EMBAIXADORES (Baseada em Indicações Diretas) ---
 const NIVEIS_EMBAIXADOR = [
   { limit: 5, title: "Embaixador Start", color: "text-gray-300", border: "border-gray-500", icon: Share2, desc: "Iniciou sua rede (5 convites)." },
   { limit: 20, title: "Embaixador Bronze", color: "text-amber-700", border: "border-amber-700", icon: Shield, desc: "Influência local (20 convites)." },
@@ -33,9 +33,16 @@ export default function JornadaPage() {
     async function fetchData() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        // 1. Busca Saldo (Para trilha Técnica)
+        // 1. Busca Saldo (Atualizado para ler active_pro + passive_pro)
         const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-        if (profile) setTotalBalance((profile.coins || 0) + (profile.personal_coins || 0));
+        if (profile) {
+            const active = profile.active_pro || 0;
+            const passive = profile.passive_pro || 0;
+            // Fallback para colunas antigas se as novas estiverem zeradas (durante migração)
+            const oldCoins = (profile.coins || 0) + (profile.personal_coins || 0);
+            
+            setTotalBalance(active + passive > 0 ? active + passive : oldCoins);
+        }
 
         // 2. Busca Contagem de Convidados (Para trilha Embaixador)
         // Conta quantas pessoas têm o campo "invited_by" igual ao meu ID
@@ -64,10 +71,10 @@ export default function JornadaPage() {
       
       <div className="mb-10">
         <h1 className="text-3xl font-extrabold italic tracking-wide">
-          SUA CARREIRA <span className="text-[#C9A66B]">360º</span>
+          MINHA <span className="text-[#C9A66B]">JORNADA</span>
         </h1>
         <p className="text-gray-400 mt-2 text-sm">
-          Acompanhe sua evolução técnica e seu poder de influência.
+          Acompanhe sua evolução técnica e seu poder de influência no ecossistema.
         </p>
       </div>
 
@@ -81,7 +88,7 @@ export default function JornadaPage() {
                 <h2 className="text-lg font-bold uppercase tracking-widest text-white">Meritocracia Técnica</h2>
                 <p className="text-xs text-gray-500">Baseado em PROs Acumulados</p>
             </div>
-            <div className="ml-auto bg-[#111] px-3 py-1 rounded text-[#C9A66B] font-bold text-sm">
+            <div className="ml-auto bg-[#111] px-3 py-1 rounded text-[#C9A66B] font-bold text-sm border border-[#222]">
                 {totalBalance.toLocaleString('pt-BR')} PRO
             </div>
           </div>
@@ -92,6 +99,9 @@ export default function JornadaPage() {
 
             {PLACAS_TECNICAS.map((placa) => {
               const isUnlocked = totalBalance >= placa.limit;
+              const previousLimit = PLACAS_TECNICAS.find(p => p.limit < placa.limit)?.limit || 0;
+              const isNextPlaca = !isUnlocked && totalBalance >= previousLimit && totalBalance < placa.limit;
+              
               return (
                 <div 
                   key={placa.limit}
@@ -115,6 +125,17 @@ export default function JornadaPage() {
                       Meta: {placa.limit.toLocaleString('pt-BR')} PRO
                     </p>
                   </div>
+                  
+                  {/* Barra de progresso individual se for a próxima placa */}
+                  {isNextPlaca && (
+                      <div className="absolute bottom-0 left-0 h-1 bg-[#222] w-full rounded-b-xl overflow-hidden">
+                          <div 
+                            className={`h-full ${placa.color.replace('text-', 'bg-')}`} 
+                            style={{ width: `${((totalBalance - previousLimit) / (placa.limit - previousLimit)) * 100}%` }}
+                          ></div>
+                      </div>
+                  )}
+
                 </div>
               );
             })}
@@ -129,7 +150,7 @@ export default function JornadaPage() {
                 <h2 className="text-lg font-bold uppercase tracking-widest text-white">Níveis de Embaixador</h2>
                 <p className="text-xs text-gray-500">Baseado em sua Rede de Indicações</p>
             </div>
-            <div className="ml-auto bg-[#111] px-3 py-1 rounded text-blue-400 font-bold text-sm">
+            <div className="ml-auto bg-[#111] px-3 py-1 rounded text-blue-400 font-bold text-sm border border-[#222]">
                 {referralCount} Convites
             </div>
           </div>
