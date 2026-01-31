@@ -8,15 +8,21 @@ export default function ComunidadePage() {
   const supabase = createClientComponentClient();
   const [activeTab, setActiveTab] = useState<'ranking' | 'feed'>('ranking');
   
-  // Dados
+  // Dados Principais
   const [ranking, setRanking] = useState<any[]>([]);
   const [posts, setPosts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [currentProfile, setCurrentProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [rankingFilter, setRankingFilter] = useState<"Profissional" | "Distribuidor">("Profissional");
 
-  // Estado do Post
+  // Estados de Interação
+  const [myLikes, setMyLikes] = useState<Set<string>>(new Set()); // IDs dos posts que eu curti
+  const [openComments, setOpenComments] = useState<string | null>(null); // ID do post com comentários abertos
+  const [commentsData, setCommentsData] = useState<Record<string, any[]>>({}); // Mapa de comentários por post
+  const [commentText, setCommentText] = useState(""); // Texto do novo comentário
+
+  // Estado de Novo Post
   const [newPostText, setNewPostText] = useState("");
   const [newPostImage, setNewPostImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -38,15 +44,20 @@ export default function ComunidadePage() {
     try {
       setLoading(true);
       
-      // 1. Identificar Usuário Atual
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data: myProfile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
         setCurrentProfile(myProfile);
         setCurrentUser(myProfile || { id: user.id, full_name: "Eu", avatar_url: null });
+
+        // Busca meus likes para pintar os corações
+        const { data: likesData } = await supabase.from("likes").select("post_id").eq("user_id", user.id);
+        if (likesData) {
+            setMyLikes(new Set(likesData.map(l => l.post_id)));
+        }
       }
 
-      // 2. Buscar Ranking com filtro
+      // Ranking com filtro
       let query = supabase
         .from("profiles")
         .select("id, full_name, avatar_url, coins, personal_coins, role, work_type, specialty");
@@ -72,7 +83,6 @@ export default function ComunidadePage() {
         setRanking(sortedProfiles);
       }
 
-      // 3. Buscar Feed
       await refreshFeed();
 
     } catch (error) {
@@ -94,7 +104,93 @@ export default function ComunidadePage() {
     if (postsData) setPosts(postsData);
   }
 
-  // --- POSTAR ---
+  // --- FUNÇÕES DE CURTIDA (LIKE) ---
+  const handleLike = async (postId: string) => {
+    if (!currentUser) return;
+
+    // Atualização Otimista (Visual instantâneo)
+    const isLiked = myLikes.has(postId);
+    const newLikesSet = new Set(myLikes);
+    
+    // Atualiza lista local de posts para mudar o número na hora
+    const updatedPosts = posts.map(p => {
+        if (p.id === postId) {
+            return { ...p, likes_count: isLiked ? Math.max(0, (p.likes_count || 0) - 1) : (p.likes_count || 0) + 1 };
+        }
+        return p;
+    });
+    setPosts(updatedPosts);
+
+    if (isLiked) newLikesSet.delete(postId);
+    else newLikesSet.add(postId);
+    setMyLikes(newLikesSet);
+
+    // Chama o banco
+    try {
+      const { error } = await supabase.rpc('toggle_like', { 
+          target_post_id: postId, 
+          target_user_id: currentUser.id 
+      });
+
+      if (error) {
+        console.error("Erro ao curtir:", error);
+        // Reverte se der erro
+        setPosts(posts);
+        setMyLikes(myLikes);
+      }
+    } catch (error) {
+      console.error("Erro ao curtir:", error);
+      // Reverte se der erro
+      setPosts(posts);
+      setMyLikes(myLikes);
+    }
+  };
+
+  // --- FUNÇÕES DE COMENTÁRIO ---
+  const toggleComments = async (postId: string) => {
+    if (openComments === postId) {
+        setOpenComments(null); // Fecha se já estiver aberto
+    } else {
+        setOpenComments(postId); // Abre
+        if (!commentsData[postId]) {
+            // Busca comentários se ainda não tiver carregado
+            loadComments(postId);
+        }
+    }
+  };
+
+  const loadComments = async (postId: string) => {
+    const { data } = await supabase
+        .from("comments")
+        .select(`id, content, created_at, profiles(full_name, avatar_url)`)
+        .eq("post_id", postId)
+        .order("created_at", { ascending: true });
+    
+    if (data) {
+        setCommentsData(prev => ({ ...prev, [postId]: data }));
+    }
+  };
+
+  const sendComment = async (postId: string) => {
+    if (!commentText.trim() || !currentUser) return;
+
+    // Salva no banco
+    const { error } = await supabase.from("comments").insert({
+        post_id: postId,
+        user_id: currentUser.id,
+        content: commentText
+    });
+
+    if (!error) {
+        setCommentText(""); // Limpa input
+        loadComments(postId); // Recarrega lista
+    } else {
+        alert("Erro ao comentar.");
+    }
+  };
+
+
+  // --- FUNÇÕES DE POSTAGEM ---
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -109,7 +205,7 @@ export default function ComunidadePage() {
       return;
     }
     if (!currentUser) {
-      alert("Erro: Usuário não identificado. Faça login novamente.");
+      alert("Erro de sessão.");
       return;
     }
 
@@ -117,25 +213,15 @@ export default function ComunidadePage() {
       setPosting(true);
       let finalImageUrl = null;
 
-      // Upload da Foto
       if (newPostImage) {
         const fileExt = newPostImage.name.split('.').pop();
         const fileName = `${Date.now()}.${fileExt}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from("feed-images")
-          .upload(fileName, newPostImage);
-
+        const { error: uploadError } = await supabase.storage.from("feed-images").upload(fileName, newPostImage);
         if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from("feed-images")
-          .getPublicUrl(fileName);
-        
+        const { data: { publicUrl } } = supabase.storage.from("feed-images").getPublicUrl(fileName);
         finalImageUrl = publicUrl;
       }
 
-      // Salvar no Banco
       const { error: dbError } = await supabase.from("posts").insert({
         user_id: currentUser.id,
         content: newPostText,
@@ -144,7 +230,6 @@ export default function ComunidadePage() {
 
       if (dbError) throw dbError;
 
-      // Limpar formulário
       setNewPostText("");
       setNewPostImage(null);
       if (previewUrl) {
@@ -154,14 +239,13 @@ export default function ComunidadePage() {
       await refreshFeed();
       
     } catch (error: any) {
-      console.error(error);
-      alert("Não foi possível postar: " + (error.message || "Erro desconhecido"));
+      console.error("Erro ao postar:", error);
+      alert("Erro ao postar: " + (error.message || "Erro desconhecido"));
     } finally {
       setPosting(false);
     }
   };
 
-  // Renderizar @Menções
   const renderText = (text: string) => {
     if (!text) return null;
     return text.split(/(\s+)/).map((part, index) => {
@@ -211,7 +295,6 @@ export default function ComunidadePage() {
         <p className="text-gray-400 mt-2 text-sm">Ranking e Networking.</p>
       </div>
 
-      {/* Abas */}
       <div className="flex w-full bg-[#111] p-1 rounded-xl mb-6 border border-[#222]">
         <button 
           onClick={() => setActiveTab('ranking')} 
@@ -235,7 +318,6 @@ export default function ComunidadePage() {
         </button>
       </div>
 
-      {/* === RANKING === */}
       {activeTab === 'ranking' && (
         <div className="max-w-3xl mx-auto space-y-3">
           {/* Filtro para Distribuidores */}
@@ -336,7 +418,6 @@ export default function ComunidadePage() {
         </div>
       )}
 
-      {/* === FEED === */}
       {activeTab === 'feed' && (
         <div className="max-w-2xl mx-auto">
           
@@ -355,11 +436,10 @@ export default function ComunidadePage() {
               <textarea 
                 value={newPostText}
                 onChange={(e) => setNewPostText(e.target.value)}
-                placeholder="Compartilhe sua evolução... Use @ para marcar."
+                placeholder="Compartilhe sua evolução..."
                 className="w-full bg-transparent text-sm text-white placeholder-gray-600 outline-none resize-none h-20"
               />
             </div>
-
             {previewUrl && (
               <div className="relative mb-3 w-fit">
                 <img src={previewUrl} className="h-40 rounded-lg border border-[#333]" alt="Preview" />
@@ -377,7 +457,6 @@ export default function ComunidadePage() {
                 </button>
               </div>
             )}
-
             <div className="flex justify-between items-center border-t border-[#222] pt-3">
               <input 
                 type="file" 
@@ -400,9 +479,7 @@ export default function ComunidadePage() {
                 {posting ? (
                   <Loader2 size={16} className="animate-spin"/>
                 ) : (
-                  <>
-                    <Send size={14}/> POSTAR
-                  </>
+                  "POSTAR"
                 )}
               </button>
             </div>
@@ -420,50 +497,116 @@ export default function ComunidadePage() {
                 <p className="text-xs mt-2">Seja o primeiro a postar!</p>
               </div>
             ) : (
-              posts.map((post) => (
-                <div key={post.id} className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-                  <div className="p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-[#222] overflow-hidden border border-[#333]">
-                        {post.profiles?.avatar_url ? (
-                          <img src={post.profiles.avatar_url} className="w-full h-full object-cover" alt={post.profiles.full_name || "User"} />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-xs text-gray-500">
-                            {post.profiles?.full_name?.substring(0,2).toUpperCase() || "U"}
-                          </div>
-                        )}
+              posts.map((post) => {
+                const isLiked = myLikes.has(post.id);
+                const showComments = openComments === post.id;
+                
+                return (
+                  <div key={post.id} className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                    <div className="p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-[#222] overflow-hidden border border-[#333]">
+                          {post.profiles?.avatar_url ? (
+                            <img src={post.profiles.avatar_url} className="w-full h-full object-cover" alt={post.profiles.full_name || "User"} />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-xs text-gray-500">
+                              {post.profiles?.full_name?.substring(0,2).toUpperCase() || "U"}
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-white">{post.profiles?.full_name || "Membro"}</p>
+                          <p className="text-[10px] text-gray-500">{timeAgo(post.created_at)}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-bold text-white">{post.profiles?.full_name || "Membro"}</p>
-                        <p className="text-[10px] text-gray-500">{timeAgo(post.created_at)}</p>
+                    </div>
+
+                    {post.content && (
+                      <div className="px-4 pb-3 text-sm text-gray-300 whitespace-pre-wrap">
+                        {renderText(post.content)}
                       </div>
-                    </div>
-                  </div>
+                    )}
+                    
+                    {post.image_url && (
+                      <div className="w-full bg-black">
+                        <img src={post.image_url} className="w-full h-auto max-h-[500px] object-contain" alt="Post" />
+                      </div>
+                    )}
 
-                  {post.content && (
-                    <div className="px-4 pb-3 text-sm text-gray-300 whitespace-pre-wrap">
-                      {renderText(post.content)}
+                    {/* BOTÕES DE AÇÃO */}
+                    <div className="p-3 border-t border-[#222] flex gap-6 text-gray-500">
+                      <button 
+                        onClick={() => handleLike(post.id)}
+                        className={`flex items-center gap-2 transition-colors ${isLiked ? "text-red-500" : "hover:text-red-500"}`}
+                      >
+                        <Heart size={20} fill={isLiked ? "currentColor" : "none"} /> 
+                        <span className="text-xs font-bold">{post.likes_count || 0}</span>
+                      </button>
+                      
+                      <button 
+                        onClick={() => toggleComments(post.id)}
+                        className={`flex items-center gap-2 transition-colors ${showComments ? "text-[#C9A66B]" : "hover:text-[#C9A66B]"}`}
+                      >
+                        <MessageSquare size={20} /> 
+                        <span className="text-xs font-bold">Comentar</span>
+                      </button>
                     </div>
-                  )}
-                  
-                  {post.image_url && (
-                    <div className="w-full bg-black">
-                      <img src={post.image_url} className="w-full h-auto max-h-[500px] object-contain" alt="Post" />
-                    </div>
-                  )}
 
-                  <div className="p-3 border-t border-[#222] flex gap-4 text-gray-500">
-                    <button className="flex items-center gap-1 hover:text-red-500 transition-colors">
-                      <Heart size={18}/> 
-                      <span className="text-xs">{post.likes_count || 0}</span>
-                    </button>
-                    <button className="flex items-center gap-1 hover:text-blue-500 transition-colors">
-                      <MessageSquare size={18}/> 
-                      <span className="text-xs">Comentar</span>
-                    </button>
+                    {/* ÁREA DE COMENTÁRIOS (Expansível) */}
+                    {showComments && (
+                      <div className="bg-[#0f0f0f] border-t border-[#222] p-4 animate-in slide-in-from-top-2">
+                        {/* Lista de Comentários */}
+                        <div className="space-y-3 mb-4 max-h-60 overflow-y-auto">
+                          {!commentsData[post.id] && (
+                            <p className="text-xs text-gray-600">Carregando...</p>
+                          )}
+                          {commentsData[post.id]?.length === 0 && (
+                            <p className="text-xs text-gray-600">Seja o primeiro a comentar!</p>
+                          )}
+                          
+                          {commentsData[post.id]?.map((comment: any) => (
+                            <div key={comment.id} className="flex gap-2 items-start">
+                              <div className="w-6 h-6 rounded-full bg-[#222] overflow-hidden shrink-0 border border-[#333]">
+                                {comment.profiles?.avatar_url ? (
+                                  <img src={comment.profiles.avatar_url} className="w-full h-full object-cover" alt={comment.profiles.full_name || "User"} />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-[8px] text-gray-500">
+                                    {comment.profiles?.full_name?.substring(0,2).toUpperCase() || "U"}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="bg-[#1a1a1a] rounded-lg rounded-tl-none p-2 px-3 text-xs text-gray-300 flex-1">
+                                <span className="font-bold text-[#C9A66B] mr-2">{comment.profiles?.full_name || "Usuário"}</span>
+                                {comment.content}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Input de Novo Comentário */}
+                        <div className="flex gap-2">
+                          <input 
+                            type="text" 
+                            value={commentText}
+                            onChange={(e) => setCommentText(e.target.value)}
+                            placeholder="Escreva um comentário..."
+                            className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-full px-4 py-2 text-xs text-white outline-none focus:border-[#C9A66B] transition-colors"
+                            onKeyDown={(e) => e.key === 'Enter' && sendComment(post.id)}
+                          />
+                          <button 
+                            onClick={() => sendComment(post.id)}
+                            disabled={!commentText.trim()}
+                            className="bg-[#C9A66B] text-black p-2 rounded-full hover:bg-[#b08d55] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          >
+                            <Send size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
