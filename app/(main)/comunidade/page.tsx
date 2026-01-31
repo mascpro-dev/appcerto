@@ -2,27 +2,18 @@
 
 import { useEffect, useState, useRef } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { Trophy, Medal, MessageSquare, Heart, ImageIcon, MoreHorizontal, X, Loader2, Send, Crown } from "lucide-react";
+import { Trophy, MessageSquare, Heart, ImageIcon, X, Loader2, Send } from "lucide-react";
 
 export default function ComunidadePage() {
   const supabase = createClientComponentClient();
   const [activeTab, setActiveTab] = useState<'ranking' | 'feed'>('ranking');
   
-  // Dados Principais
+  // Dados
   const [ranking, setRanking] = useState<any[]>([]);
   const [posts, setPosts] = useState<any[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const [currentProfile, setCurrentProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [rankingFilter, setRankingFilter] = useState<"Profissional" | "Distribuidor">("Profissional");
-
-  // Estados de Interação
-  const [myLikes, setMyLikes] = useState<Set<string>>(new Set()); // IDs dos posts que eu curti
-  const [openComments, setOpenComments] = useState<string | null>(null); // ID do post com comentários abertos
-  const [commentsData, setCommentsData] = useState<Record<string, any[]>>({}); // Mapa de comentários por post
-  const [commentText, setCommentText] = useState(""); // Texto do novo comentário
-
-  // Estado de Novo Post
+  
+  // Inputs
   const [newPostText, setNewPostText] = useState("");
   const [newPostImage, setNewPostImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -30,274 +21,139 @@ export default function ComunidadePage() {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Verificar se usuário é Distribuidor
-  const isDistribuidor = currentProfile?.work_type === "Distribuidor" || 
-                         currentProfile?.work_type === "distribuidor" ||
-                         currentProfile?.role === "Distribuidor" || 
-                         currentProfile?.role === "distribuidor";
-
   useEffect(() => {
     fetchData();
-  }, [rankingFilter, isDistribuidor]);
-
-  // Recarregar posts quando mudar para a aba de feed
-  useEffect(() => {
-    if (activeTab === 'feed' && !loading) {
-      refreshFeed();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
+  }, []);
 
   async function fetchData() {
-    try {
-      setLoading(true);
-      
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: myProfile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-        setCurrentProfile(myProfile);
-        setCurrentUser(myProfile || { id: user.id, full_name: "Eu", avatar_url: null });
-
-        // Busca meus likes para pintar os corações
-        const { data: likesData } = await supabase.from("likes").select("post_id").eq("user_id", user.id);
-        if (likesData) {
-            setMyLikes(new Set(likesData.map(l => l.post_id)));
-        }
-      }
-
-      // Ranking com filtro
-      let query = supabase
+    console.log("🔄 Iniciando carregamento de dados...");
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (user) {
+      console.log("✅ Usuário autenticado:", user.id);
+      // Busca Perfil
+      const { data: myProfile, error: profileError } = await supabase
         .from("profiles")
-        .select("id, full_name, avatar_url, coins, personal_coins, role, work_type, specialty");
+        .select("*")
+        .eq("id", user.id)
+        .single();
+      
+      if (profileError) console.error("❌ Erro ao buscar perfil:", profileError);
+      else console.log("✅ Perfil encontrado:", myProfile);
 
-      if (isDistribuidor) {
-        if (rankingFilter === "Distribuidor") {
-          query = query.eq("work_type", "Distribuidor");
-        } else {
-          query = query.neq("work_type", "Distribuidor");
-        }
-      } else {
-        query = query.neq("work_type", "Distribuidor");
-      }
-
-      const { data: profiles } = await query;
-
-      if (profiles) {
-        const sortedProfiles = profiles.map(p => ({
-          ...p,
-          total_coins: (p.coins || 0) + (p.personal_coins || 0),
-          name: p.full_name || "Membro MASC"
-        })).sort((a, b) => b.total_coins - a.total_coins);
-        setRanking(sortedProfiles);
-      }
-
-      await refreshFeed();
-
-    } catch (error) {
-      console.error("Erro ao carregar:", error);
-      setPosts([]);
-    } finally {
-      setLoading(false);
+      setCurrentUser(myProfile || { id: user.id, full_name: "Usuário", avatar_url: null });
+    } else {
+      console.error("⚠️ Nenhum usuário logado!");
     }
+
+    // Busca Posts
+    await refreshFeed();
   }
 
   async function refreshFeed() {
-    try {
-      console.log("🔄 Atualizando feed...");
-      const { data: postsData, error } = await supabase
+    console.log("🔄 Buscando posts no banco...");
+    const { data: postsData, error } = await supabase
         .from("posts")
-        .select(`
-          id, content, image_url, created_at, likes_count,
-          profiles (full_name, avatar_url, role)
-        `)
+      .select(`
+        id, content, image_url, created_at, likes_count,
+        profiles (full_name, avatar_url, role)
+      `)
         .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error("❌ Erro ao buscar posts:", error);
-        console.error("Detalhes do erro:", JSON.stringify(error, null, 2));
-        setPosts([]);
-        return;
-      }
-
-      console.log("✅ Posts carregados:", postsData?.length || 0);
-      if (postsData) {
-        setPosts(postsData);
-      } else {
-        console.log("⚠️ Nenhum post encontrado");
-        setPosts([]);
-      }
-    } catch (error) {
-      console.error("❌ Erro ao atualizar feed:", error);
-      setPosts([]);
+      
+    if (error) {
+        console.error("❌ Erro ao buscar feed:", error);
+    } else {
+        console.log("✅ Posts carregados:", postsData?.length);
+        setPosts(postsData || []);
     }
   }
 
-  // --- FUNÇÕES DE CURTIDA (LIKE) ---
-  const handleLike = async (postId: string) => {
-    if (!currentUser) return;
-
-    // Atualização Otimista (Visual instantâneo)
-    const isLiked = myLikes.has(postId);
-    const newLikesSet = new Set(myLikes);
-    
-    // Atualiza lista local de posts para mudar o número na hora
-    const updatedPosts = posts.map(p => {
-        if (p.id === postId) {
-            return { ...p, likes_count: isLiked ? Math.max(0, (p.likes_count || 0) - 1) : (p.likes_count || 0) + 1 };
-        }
-        return p;
-    });
-    setPosts(updatedPosts);
-
-    if (isLiked) newLikesSet.delete(postId);
-    else newLikesSet.add(postId);
-    setMyLikes(newLikesSet);
-
-    // Chama o banco
-    try {
-      const { error } = await supabase.rpc('toggle_like', { 
-          target_post_id: postId, 
-          target_user_id: currentUser.id 
-      });
-
-      if (error) {
-        console.error("Erro ao curtir:", error);
-        // Reverte se der erro
-        setPosts(posts);
-        setMyLikes(myLikes);
-      }
-    } catch (error) {
-      console.error("Erro ao curtir:", error);
-      // Reverte se der erro
-      setPosts(posts);
-      setMyLikes(myLikes);
-    }
-  };
-
-  // --- FUNÇÕES DE COMENTÁRIO ---
-  const toggleComments = async (postId: string) => {
-    if (openComments === postId) {
-        setOpenComments(null); // Fecha se já estiver aberto
-    } else {
-        setOpenComments(postId); // Abre
-        if (!commentsData[postId]) {
-            // Busca comentários se ainda não tiver carregado
-            loadComments(postId);
-        }
-    }
-  };
-
-  const loadComments = async (postId: string) => {
-    const { data } = await supabase
-        .from("comments")
-        .select(`id, content, created_at, profiles(full_name, avatar_url)`)
-        .eq("post_id", postId)
-        .order("created_at", { ascending: true });
-    
-    if (data) {
-        setCommentsData(prev => ({ ...prev, [postId]: data }));
-    }
-  };
-
-  const sendComment = async (postId: string) => {
-    if (!commentText.trim() || !currentUser) return;
-
-    // Salva no banco
-    const { error } = await supabase.from("comments").insert({
-        post_id: postId,
-        user_id: currentUser.id,
-        content: commentText
-    });
-
-    if (!error) {
-        setCommentText(""); // Limpa input
-        loadComments(postId); // Recarrega lista
-    } else {
-        alert("Erro ao comentar.");
-    }
-  };
-
-
-  // --- FUNÇÕES DE POSTAGEM ---
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setNewPostImage(file);
-      setPreviewUrl(URL.createObjectURL(file));
-    }
-  };
-
+  // --- POSTAGEM COM LOGS DETALHADOS ---
   const handlePublish = async () => {
+    console.log("🚀 Botão POSTAR clicado!");
+    
     if (!newPostText.trim() && !newPostImage) {
-      alert("Escreva algo ou adicione uma foto!");
-      return;
+        console.warn("⚠️ Tentativa de postar vazio.");
+        return alert("Escreva algo!");
     }
-    if (!currentUser || !currentUser.id) {
-      alert("Erro de sessão. Faça login novamente.");
-      return;
+    if (!currentUser) {
+        console.error("❌ Erro: currentUser é nulo.");
+        return alert("Erro de sessão. Recarregue a página.");
     }
 
     try {
       setPosting(true);
       let finalImageUrl = null;
 
+      // 1. Upload da Imagem
       if (newPostImage) {
+        console.log("📸 Iniciando upload da imagem...");
         const fileExt = newPostImage.name.split('.').pop();
         const fileName = `${Date.now()}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage.from("feed-images").upload(fileName, newPostImage);
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from("feed-images")
+          .upload(fileName, newPostImage);
+
         if (uploadError) {
-          console.error("Erro no upload:", uploadError);
-          throw new Error("Erro ao fazer upload da imagem: " + uploadError.message);
+            console.error("❌ Erro no Storage:", uploadError);
+            throw uploadError;
         }
-        const { data: { publicUrl } } = supabase.storage.from("feed-images").getPublicUrl(fileName);
+
+        const { data: { publicUrl } } = supabase.storage
+          .from("feed-images")
+          .getPublicUrl(fileName);
+        
         finalImageUrl = publicUrl;
+        console.log("✅ Imagem enviada:", finalImageUrl);
       }
 
-      console.log("📝 Salvando post no banco...");
-      const { data: newPost, error: dbError } = await supabase.from("posts").insert({
+      // 2. Insert no Banco
+      console.log("📝 Tentando salvar no banco de dados...");
+      const payload = {
         user_id: currentUser.id,
-        content: newPostText.trim(),
+        content: newPostText,
         image_url: finalImageUrl
-      }).select().single();
+      };
+      console.log("📦 Payload:", payload);
+
+      const { data: insertData, error: dbError } = await supabase
+        .from("posts")
+        .insert(payload)
+        .select(); // IMPORTANTE: .select() retorna o que foi salvo
 
       if (dbError) {
-        console.error("❌ Erro ao salvar post:", dbError);
-        console.error("Detalhes do erro:", JSON.stringify(dbError, null, 2));
-        throw new Error("Erro ao salvar post: " + dbError.message);
+        console.error("❌ ERRO CRÍTICO NO BANCO:", dbError);
+        alert("Erro ao salvar: " + dbError.message);
+        throw dbError;
       }
 
-      console.log("✅ Post salvo com sucesso:", newPost);
+      console.log("✅ Sucesso! Dados salvos:", insertData);
 
-      // Limpar formulário
+      // 3. Limpeza
       setNewPostText("");
       setNewPostImage(null);
       if (previewUrl) {
         URL.revokeObjectURL(previewUrl);
-        setPreviewUrl(null);
       }
+      setPreviewUrl(null);
       
-      // Recarregar feed
+      console.log("🔄 Atualizando feed...");
       await refreshFeed();
       
-      // Feedback visual
-      console.log("Post publicado com sucesso!");
-      
     } catch (error: any) {
-      console.error("Erro ao postar:", error);
-      alert("Erro ao postar: " + (error.message || "Erro desconhecido"));
+      console.error("💥 Erro capturado no catch:", error);
     } finally {
       setPosting(false);
     }
   };
 
-  const renderText = (text: string) => {
-    if (!text) return null;
-    return text.split(/(\s+)/).map((part, index) => {
-      if (part.startsWith('@') && part.length > 1) {
-        return <span key={index} className="text-[#C9A66B] font-bold cursor-pointer">{part}</span>;
-      }
-      return part;
-    });
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setNewPostImage(file);
+      setPreviewUrl(URL.createObjectURL(file));
+    }
   };
 
   const timeAgo = (dateString: string) => {
@@ -308,27 +164,6 @@ export default function ComunidadePage() {
     return `${Math.floor(diff/86400)}d`;
   };
 
-  const formatNumber = (num: number) => {
-    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  };
-
-  const getRoleLabel = (profile: any) => {
-    if (!profile) return "Membro";
-    const isDist = profile.work_type === "distribuidor" || profile.role === "distribuidor";
-    if (isDist) return "Distribuidor";
-    if (profile.specialty) {
-      const specialties: { [key: string]: string } = {
-        cabeleireiro: "Cabeleireiro",
-        barbeiro: "Barbeiro",
-        esteticista: "Esteticista",
-        manicure: "Manicure",
-        outro: "Profissional",
-      };
-      return specialties[profile.specialty] || "Profissional";
-    }
-    return profile.role || "Membro";
-  };
-
   return (
     <div className="p-4 md:p-8 min-h-screen bg-[#000000] text-white font-sans pb-20">
       
@@ -336,13 +171,12 @@ export default function ComunidadePage() {
         <h1 className="text-3xl font-extrabold italic tracking-wide">
           COMUNIDADE <span className="text-[#C9A66B]">PRO</span>
         </h1>
-        <p className="text-gray-400 mt-2 text-sm">Ranking e Networking.</p>
-      </div>
+        </div>
 
       <div className="flex w-full bg-[#111] p-1 rounded-xl mb-6 border border-[#222]">
         <button 
           onClick={() => setActiveTab('ranking')} 
-          className={`flex-1 py-3 text-xs md:text-sm font-bold uppercase rounded-lg transition-all ${
+          className={`flex-1 py-3 text-sm font-bold uppercase rounded-lg transition-all ${
             activeTab === 'ranking' 
               ? "bg-[#C9A66B] text-black" 
               : "text-gray-500 hover:text-white"
@@ -352,7 +186,7 @@ export default function ComunidadePage() {
         </button>
         <button 
           onClick={() => setActiveTab('feed')} 
-          className={`flex-1 py-3 text-xs md:text-sm font-bold uppercase rounded-lg transition-all ${
+          className={`flex-1 py-3 text-sm font-bold uppercase rounded-lg transition-all ${
             activeTab === 'feed' 
               ? "bg-[#C9A66B] text-black" 
               : "text-gray-500 hover:text-white"
@@ -363,102 +197,8 @@ export default function ComunidadePage() {
       </div>
 
       {activeTab === 'ranking' && (
-        <div className="max-w-3xl mx-auto space-y-3">
-          {/* Filtro para Distribuidores */}
-          {isDistribuidor && (
-            <div className="flex justify-center bg-[#111] p-1 rounded-lg w-fit mx-auto mb-4 border border-[#222]">
-              <button 
-                onClick={() => setRankingFilter("Profissional")}
-                className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${
-                  rankingFilter === "Profissional" 
-                    ? "bg-[#C9A66B] text-black" 
-                    : "text-gray-400 hover:text-white"
-                }`}
-              >
-                Profissionais
-              </button>
-              <button 
-                onClick={() => setRankingFilter("Distribuidor")}
-                className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${
-                  rankingFilter === "Distribuidor" 
-                    ? "bg-[#C9A66B] text-black" 
-                    : "text-gray-400 hover:text-white"
-                }`}
-              >
-                Distribuidores
-              </button>
-            </div>
-          )}
-
-          {loading ? (
-            <div className="text-center text-gray-500 py-10 animate-pulse">
-              Carregando ranking...
-            </div>
-          ) : ranking.length === 0 ? (
-            <div className="text-center text-gray-500 py-10">
-              Ninguém no ranking ainda.
-            </div>
-          ) : (
-            ranking.map((profile, index) => {
-              const isMe = currentUser && profile.id === currentUser.id;
-              const position = index + 1;
-              let MedalIcon = Medal;
-              let medalColor = "text-gray-600";
-              
-              if (position === 1) {
-                MedalIcon = Crown;
-                medalColor = "text-yellow-400";
-              } else if (position === 2) {
-                medalColor = "text-gray-300";
-              } else if (position === 3) {
-                medalColor = "text-amber-700";
-              }
-
-              return (
-                <div 
-                  key={profile.id} 
-                  className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
-                    isMe 
-                      ? "border-[#C9A66B] bg-[#C9A66B]/10" 
-                      : "border-[#222] bg-[#111] hover:border-[#333]"
-                  }`}
-                >
-                  <div className="flex items-center gap-4">
-                    <span className={`font-black text-lg w-8 text-center ${medalColor}`}>
-                      {position <= 3 ? (
-                        <MedalIcon className={`w-6 h-6 mx-auto ${position === 1 ? "fill-yellow-400" : ""}`} />
-                      ) : (
-                        `#${position}`
-                      )}
-                    </span>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-[#222] overflow-hidden border border-[#333]">
-                        {profile.avatar_url ? (
-                          <img src={profile.avatar_url} className="w-full h-full object-cover" alt={profile.name} />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-xs text-gray-500">
-                            {profile.name.substring(0,2).toUpperCase()}
-                          </div>
-                        )}
-                      </div>
-                      <div>
-                        <p className={`font-bold text-sm ${isMe ? "text-[#C9A66B]" : "text-white"}`}>
-                          {profile.name} {isMe && "(Você)"}
-                        </p>
-                        <p className="text-[10px] text-gray-500 uppercase">
-                          {getRoleLabel(profile)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 bg-black/40 px-3 py-1 rounded-lg border border-white/5">
-                    <Trophy className="w-3 h-3 text-[#C9A66B]" />
-                    <span className="font-bold text-sm">{formatNumber(profile.total_coins)}</span>
-                  </div>
-                </div>
-              );
-            })
-          )}
+        <div className="text-center text-gray-500 py-10">
+          Ranking aqui...
         </div>
       )}
 
@@ -477,10 +217,10 @@ export default function ComunidadePage() {
                   </div>
                 )}
               </div>
-              <textarea 
+            <textarea
                 value={newPostText}
                 onChange={(e) => setNewPostText(e.target.value)}
-                placeholder="Compartilhe sua evolução..."
+                placeholder="No que você está pensando?"
                 className="w-full bg-transparent text-sm text-white placeholder-gray-600 outline-none resize-none h-20"
               />
             </div>
@@ -492,8 +232,8 @@ export default function ComunidadePage() {
                     setNewPostImage(null); 
                     if (previewUrl) {
                       URL.revokeObjectURL(previewUrl);
-                      setPreviewUrl(null);
                     }
+                    setPreviewUrl(null); 
                   }} 
                   className="absolute -top-2 -right-2 bg-red-600 text-white p-1 rounded-full hover:bg-red-700 transition-colors"
                 >
@@ -531,14 +271,10 @@ export default function ComunidadePage() {
 
           {/* LISTA POSTS */}
           <div className="space-y-4">
-            {loading ? (
-              <div className="text-center text-gray-500 py-10 animate-pulse">
-                Carregando feed...
-              </div>
-            ) : posts.length === 0 ? (
+            {posts.length === 0 ? (
               <div className="text-center text-gray-500 py-10">
-                <p>Ainda não há publicações.</p>
-                <p className="text-xs mt-2">Seja o primeiro a postar!</p>
+                <p>Nenhum post encontrado.</p>
+                <p className="text-xs mt-2">(Verifique o console para logs)</p>
                 <button
                   onClick={() => refreshFeed()}
                   className="mt-4 text-xs text-[#C9A66B] hover:underline"
@@ -547,116 +283,41 @@ export default function ComunidadePage() {
                 </button>
               </div>
             ) : (
-              posts.map((post) => {
-                const isLiked = myLikes.has(post.id);
-                const showComments = openComments === post.id;
-                
-                return (
-                  <div key={post.id} className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-                    <div className="p-4 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-[#222] overflow-hidden border border-[#333]">
-                          {post.profiles?.avatar_url ? (
-                            <img src={post.profiles.avatar_url} className="w-full h-full object-cover" alt={post.profiles.full_name || "User"} />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-xs text-gray-500">
-                              {post.profiles?.full_name?.substring(0,2).toUpperCase() || "U"}
-                            </div>
-                          )}
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold text-white">{post.profiles?.full_name || "Membro"}</p>
-                          <p className="text-[10px] text-gray-500">{timeAgo(post.created_at)}</p>
-                        </div>
+              posts.map((post) => (
+                <div key={post.id} className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                  <div className="p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-[#222] overflow-hidden border border-[#333]">
+                        {post.profiles?.avatar_url ? (
+                          <img src={post.profiles.avatar_url} className="w-full h-full object-cover" alt={post.profiles.full_name || "User"} />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-xs text-gray-500">
+                            {post.profiles?.full_name?.substring(0,2).toUpperCase() || "U"}
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-white">{post.profiles?.full_name || "Membro"}</p>
+                        <p className="text-[10px] text-gray-500">{timeAgo(post.created_at)}</p>
                       </div>
                     </div>
-
-                    {post.content && (
-                      <div className="px-4 pb-3 text-sm text-gray-300 whitespace-pre-wrap">
-                        {renderText(post.content)}
-                      </div>
-                    )}
-                    
-                    {post.image_url && (
-                      <div className="w-full bg-black">
-                        <img src={post.image_url} className="w-full h-auto max-h-[500px] object-contain" alt="Post" />
-                      </div>
-                    )}
-
-                    {/* BOTÕES DE AÇÃO */}
-                    <div className="p-3 border-t border-[#222] flex gap-6 text-gray-500">
-                      <button 
-                        onClick={() => handleLike(post.id)}
-                        className={`flex items-center gap-2 transition-colors ${isLiked ? "text-red-500" : "hover:text-red-500"}`}
-                      >
-                        <Heart size={20} fill={isLiked ? "currentColor" : "none"} /> 
-                        <span className="text-xs font-bold">{post.likes_count || 0}</span>
-                      </button>
-                      
-                      <button 
-                        onClick={() => toggleComments(post.id)}
-                        className={`flex items-center gap-2 transition-colors ${showComments ? "text-[#C9A66B]" : "hover:text-[#C9A66B]"}`}
-                      >
-                        <MessageSquare size={20} /> 
-                        <span className="text-xs font-bold">Comentar</span>
-                      </button>
-                    </div>
-
-                    {/* ÁREA DE COMENTÁRIOS (Expansível) */}
-                    {showComments && (
-                      <div className="bg-[#0f0f0f] border-t border-[#222] p-4 animate-in slide-in-from-top-2">
-                        {/* Lista de Comentários */}
-                        <div className="space-y-3 mb-4 max-h-60 overflow-y-auto">
-                          {!commentsData[post.id] && (
-                            <p className="text-xs text-gray-600">Carregando...</p>
-                          )}
-                          {commentsData[post.id]?.length === 0 && (
-                            <p className="text-xs text-gray-600">Seja o primeiro a comentar!</p>
-                          )}
-                          
-                          {commentsData[post.id]?.map((comment: any) => (
-                            <div key={comment.id} className="flex gap-2 items-start">
-                              <div className="w-6 h-6 rounded-full bg-[#222] overflow-hidden shrink-0 border border-[#333]">
-                                {comment.profiles?.avatar_url ? (
-                                  <img src={comment.profiles.avatar_url} className="w-full h-full object-cover" alt={comment.profiles.full_name || "User"} />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-[8px] text-gray-500">
-                                    {comment.profiles?.full_name?.substring(0,2).toUpperCase() || "U"}
-                                  </div>
-                                )}
-                              </div>
-                              <div className="bg-[#1a1a1a] rounded-lg rounded-tl-none p-2 px-3 text-xs text-gray-300 flex-1">
-                                <span className="font-bold text-[#C9A66B] mr-2">{comment.profiles?.full_name || "Usuário"}</span>
-                                {comment.content}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Input de Novo Comentário */}
-                        <div className="flex gap-2">
-                          <input 
-                            type="text" 
-                            value={commentText}
-                            onChange={(e) => setCommentText(e.target.value)}
-                            placeholder="Escreva um comentário..."
-                            className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-full px-4 py-2 text-xs text-white outline-none focus:border-[#C9A66B] transition-colors"
-                            onKeyDown={(e) => e.key === 'Enter' && sendComment(post.id)}
-                          />
-                          <button 
-                            onClick={() => sendComment(post.id)}
-                            disabled={!commentText.trim()}
-                            className="bg-[#C9A66B] text-black p-2 rounded-full hover:bg-[#b08d55] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          >
-                            <Send size={14} />
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
                   </div>
-                );
-              })
+                  {post.content && (
+                    <div className="px-4 pb-3 text-sm text-gray-300 whitespace-pre-wrap">
+                      {post.content}
+                    </div>
+                  )}
+                  {post.image_url && (
+                    <div className="w-full bg-black">
+                      <img src={post.image_url} className="w-full h-auto max-h-[500px] object-contain" alt="Post" />
+                    </div>
+                  )}
+                  <div className="p-3 border-t border-[#222] flex gap-4 text-gray-500">
+                    <Heart size={18}/> 
+                    <span className="text-xs">{post.likes_count || 0}</span>
+                  </div>
+                </div>
+              ))
             )}
           </div>
         </div>
