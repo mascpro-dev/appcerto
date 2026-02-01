@@ -8,10 +8,10 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import "plyr-react/plyr.css";
 
-// --- A CORREÇÃO ESTÁ AQUI ---
-// Adicionamos ".then(mod => mod.default)" para garantir que ele pegue o componente certo
+// --- A CORREÇÃO BLINDADA ESTÁ AQUI ---
+// Adicionamos "(mod: any)" para forçar o TypeScript a aceitar o pacote
 const Plyr = dynamic(
-  () => import("plyr-react").then((mod) => mod.default),
+  () => import("plyr-react").then((mod: any) => mod.default),
   { ssr: false }
 );
 
@@ -149,7 +149,7 @@ export default function AulaPlayerPage() {
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white p-4 md:p-8">
       
-      {/* CSS CUSTOMIZADO DO PLYR (Dourado MASC PRO) */}
+      {/* CSS CUSTOMIZADO DO PLYR */}
       <style jsx global>{`
         :root { --plyr-color-main: #C9A66B; }
         .plyr--full-ui input[type=range] { color: #C9A66B; }
