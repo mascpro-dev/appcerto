@@ -8,12 +8,12 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import "plyr-react/plyr.css";
 
-// --- A CORREÇÃO BLINDADA ESTÁ AQUI ---
-// Adicionamos "(mod: any)" para forçar o TypeScript a aceitar o pacote
+// --- A CORREÇÃO FINAL ESTÁ AQUI ---
+// Adicionamos "as any" no final. Isso força o TypeScript a aceitar o "ref" no componente.
 const Plyr = dynamic(
   () => import("plyr-react").then((mod: any) => mod.default),
   { ssr: false }
-);
+) as any;
 
 export default function AulaPlayerPage() {
   const params = useParams();
