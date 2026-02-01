@@ -5,8 +5,11 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useParams } from "next/navigation";
 import { ArrowLeft, Loader2, Save, History } from "lucide-react";
 import Link from "next/link";
-import Plyr, { APITypes } from "plyr-react";
-import "plyr-react/plyr.css"; // Estilo padrão (vamos customizar via CSS)
+import dynamic from "next/dynamic"; // 1. Importar o carregador dinâmico
+import "plyr-react/plyr.css"; 
+
+// 2. Importar o Plyr de forma dinâmica (Desliga o SSR para este componente)
+const Plyr = dynamic(() => import("plyr-react"), { ssr: false });
 
 export default function AulaPlayerPage() {
   const params = useParams();
@@ -14,7 +17,8 @@ export default function AulaPlayerPage() {
   const courseCode = params?.code as string;
 
   // Refs e Estados
-  const playerRef = useRef<APITypes>(null);
+  // Nota: Removemos a tipagem estrita do ref momentaneamente para evitar erros de importação de tipos
+  const playerRef = useRef<any>(null);
   const [lessons, setLessons] = useState<any[]>([]);
   const [currentLesson, setCurrentLesson] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -48,11 +52,11 @@ export default function AulaPlayerPage() {
     if (courseCode) fetchLessons();
   }, [courseCode, supabase]);
 
-  // 2. CARREGAR MEMÓRIA (Banco de Dados)
+  // 2. CARREGAR MEMÓRIA
   useEffect(() => {
     async function loadMemory() {
         if (!currentLesson) return;
-        setHasJumpedToTime(false); // Reseta o pulo
+        setHasJumpedToTime(false);
         setSessionSeconds(0);
 
         const { data: { user } } = await supabase.auth.getUser();
@@ -71,28 +75,24 @@ export default function AulaPlayerPage() {
     loadMemory();
   }, [currentLesson, supabase]);
 
-  // 3. MONITORAR O VÍDEO (Plyr)
-  // O Plyr não usa o loop do React, ele tem eventos próprios, mas vamos usar um intervalo
-  // para consultar o playerRef, que é mais seguro para salvar no banco.
+  // 3. MONITORAR O VÍDEO
   useEffect(() => {
     if (!currentLesson) return;
 
     const interval = setInterval(async () => {
-        // Verifica se o player existe
+        // Acessa a instância interna do Plyr de forma segura
         const player = playerRef.current?.plyr;
         
         if (player) {
             // A. PULO INICIAL (Memória)
-            // Se o vídeo já carregou metadata e ainda não pulamos para o tempo salvo...
             if (!hasJumpedToTime && savedTime > 0 && player.duration > 0) {
                 player.currentTime = savedTime;
                 setHasJumpedToTime(true);
-                console.log("⏩ Pulando para:", savedTime);
             } else if (savedTime === 0) {
                 setHasJumpedToTime(true);
             }
 
-            // B. SALVAR NO BANCO (A cada 5s se estiver tocando)
+            // B. SALVAR NO BANCO (A cada 5s)
             const currentTime = player.currentTime;
             if (player.playing && Math.floor(currentTime) % 5 === 0 && currentTime > 0) {
                 const { data: { user } } = await supabase.auth.getUser();
@@ -110,10 +110,7 @@ export default function AulaPlayerPage() {
             if (player.playing) {
                 setSessionSeconds(prev => {
                     const novo = prev + 1;
-                    if (novo > 0 && novo % 600 === 0) { // 10 min
-                        // O setInterval roda muito rápido, precisamos garantir que pague só 1 vez por segundo
-                        // Mas aqui estamos somando +1 a cada tick do player? Não.
-                        // Melhor fazer o RPC direto aqui se passou 10 min
+                    if (novo > 0 && novo % 600 === 0) { 
                          pagarRecompensa(); 
                     }
                     return novo;
@@ -136,6 +133,7 @@ export default function AulaPlayerPage() {
     controls: [
         'play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'fullscreen'
     ],
+    // Truques para limpar o YouTube
     youtube: { noCookie: true, rel: 0, showinfo: 0, iv_load_policy: 3, modestbranding: 1 }
   };
 
@@ -148,18 +146,13 @@ export default function AulaPlayerPage() {
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white p-4 md:p-8">
       
-      {/* CSS CUSTOMIZADO DO PLYR (Para ficar Dourado/MASC PRO) */}
+      {/* CSS CUSTOMIZADO DO PLYR (Dourado MASC PRO) */}
       <style jsx global>{`
-        /* Cor Principal (Dourado) */
         :root { --plyr-color-main: #C9A66B; }
-        
-        /* Ajustes Visuais para parecer Premium */
         .plyr--full-ui input[type=range] { color: #C9A66B; }
-        .plyr__control--overlaid { background: rgba(201, 166, 107, 0.8); }
-        .plyr--video { border-radius: 12px; overflow: hidden; border: 1px solid #222; }
-        
-        /* Esconder Youtube Fake (se sobrar algum rastro) */
-        .plyr__video-embed iframe { pointer-events: none; } /* O clique vai pro Plyr, não pro YouTube */
+        .plyr__control--overlaid { background: rgba(201, 166, 107, 0.9); }
+        .plyr--video { border-radius: 12px; overflow: hidden; border: 1px solid #333; }
+        .plyr__video-embed iframe { pointer-events: none; }
       `}</style>
 
       {/* Topo */}
@@ -221,7 +214,7 @@ export default function AulaPlayerPage() {
                 <button
                   key={lesson.id}
                   onClick={() => {
-                    setHasJumpedToTime(false); // Permite pular de novo na nova aula
+                    setHasJumpedToTime(false);
                     setCurrentLesson(lesson);
                   }}
                   className={`w-full flex items-start gap-3 p-3 rounded-lg text-left transition-all border ${
