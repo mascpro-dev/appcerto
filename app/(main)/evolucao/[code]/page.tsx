@@ -5,15 +5,7 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useParams } from "next/navigation";
 import { ArrowLeft, Loader2, Save, History } from "lucide-react";
 import Link from "next/link";
-import dynamic from "next/dynamic";
-import "plyr-react/plyr.css";
-
-// --- A CORREÇÃO FINAL ESTÁ AQUI ---
-// Adicionamos "as any" no final. Isso força o TypeScript a aceitar o "ref" no componente.
-const Plyr = dynamic(
-  () => import("plyr-react").then((mod: any) => mod.default),
-  { ssr: false }
-) as any;
+import "plyr/dist/plyr.css"; // CSS Original do Plyr
 
 export default function AulaPlayerPage() {
   const params = useParams();
@@ -21,7 +13,7 @@ export default function AulaPlayerPage() {
   const courseCode = params?.code as string;
 
   // Refs e Estados
-  const playerRef = useRef<any>(null);
+  const playerInstance = useRef<any>(null); // Guarda o player na memória
   const [lessons, setLessons] = useState<any[]>([]);
   const [currentLesson, setCurrentLesson] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -29,7 +21,7 @@ export default function AulaPlayerPage() {
   // Lógica de Negócio
   const [sessionSeconds, setSessionSeconds] = useState(0); 
   const [savedTime, setSavedTime] = useState(0); 
-  const [hasJumpedToTime, setHasJumpedToTime] = useState(false);
+  const [hasJumped, setHasJumped] = useState(false);
 
   // 1. CARREGAR AULAS
   useEffect(() => {
@@ -55,11 +47,11 @@ export default function AulaPlayerPage() {
     if (courseCode) fetchLessons();
   }, [courseCode, supabase]);
 
-  // 2. CARREGAR MEMÓRIA
+  // 2. CARREGAR MEMÓRIA DO BANCO
   useEffect(() => {
     async function loadMemory() {
         if (!currentLesson) return;
-        setHasJumpedToTime(false);
+        setHasJumped(false);
         setSessionSeconds(0);
 
         const { data: { user } } = await supabase.auth.getUser();
@@ -78,67 +70,98 @@ export default function AulaPlayerPage() {
     loadMemory();
   }, [currentLesson, supabase]);
 
-  // 3. MONITORAR O VÍDEO
+  // 3. INICIAR O PLAYER (MODO MANUAL)
   useEffect(() => {
     if (!currentLesson) return;
 
-    const interval = setInterval(async () => {
-        // Acessa o player interno com segurança
-        const player = playerRef.current?.plyr;
-        
-        if (player) {
-            // A. PULO INICIAL (Memória)
-            // Tenta pular assim que o vídeo tiver duração válida
-            if (!hasJumpedToTime && savedTime > 0 && player.duration > 0) {
-                player.currentTime = savedTime;
-                setHasJumpedToTime(true);
-            } else if (savedTime === 0) {
-                setHasJumpedToTime(true);
-            }
+    // Importação dinâmica dentro do Effect para não quebrar no servidor
+    let player: any = null;
+    const loadPlayer = async () => {
+        // Importa a lógica do Plyr apenas no navegador
+        const Plyr = (await import("plyr")).default;
 
-            // B. SALVAR NO BANCO (A cada 5s)
-            const currentTime = player.currentTime;
-            if (player.playing && Math.floor(currentTime) % 5 === 0 && currentTime > 0) {
-                const { data: { user } } = await supabase.auth.getUser();
-                if (user) {
-                    await supabase.from("lesson_progress").upsert({
-                        user_id: user.id,
-                        lesson_id: currentLesson.id,
-                        seconds_watched: Math.floor(currentTime),
-                        last_updated: new Date().toISOString()
-                    });
-                }
-            }
-
-            // C. DINHEIRO (Sessão)
-            if (player.playing) {
-                setSessionSeconds(prev => {
-                    const novo = prev + 1;
-                    if (novo > 0 && novo % 600 === 0) { 
-                         pagarRecompensa(); 
-                    }
-                    return novo;
-                });
-            }
+        // Destrói player anterior se existir (para não duplicar)
+        if (playerInstance.current) {
+            playerInstance.current.destroy();
         }
-    }, 1000);
 
-    return () => clearInterval(interval);
-  }, [currentLesson, savedTime, hasJumpedToTime, supabase]);
+        // Cria o novo player
+        player = new Plyr("#player-target", {
+            autoplay: true,
+            controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'fullscreen'],
+            youtube: { noCookie: true, rel: 0, showinfo: 0, iv_load_policy: 3, modestbranding: 1 }
+        });
+
+        playerInstance.current = player;
+
+        // EVENTOS DO PLAYER
+        
+        // Quando estiver pronto, pula para o tempo salvo
+        player.on('ready', () => {
+            if (savedTime > 0) {
+                // Pequeno delay para garantir que o YouTube carregou
+                setTimeout(() => {
+                    player.currentTime = savedTime;
+                    setHasJumped(true);
+                }, 1000); 
+            }
+        });
+
+        // A cada atualização de tempo (timeupdate roda várias vezes por segundo)
+        player.on('timeupdate', (event: any) => {
+            const currentTime = event.detail.plyr.currentTime;
+            
+            // Salvar no Banco a cada 5s (aprox)
+            if (Math.floor(currentTime) % 5 === 0 && currentTime > 0) {
+                 salvarProgresso(currentTime);
+            }
+        });
+
+        // Contar tempo de sessão (Dinheiro) - Usamos um intervalo separado para não depender do vídeo
+    };
+
+    loadPlayer();
+
+    // Cleanup ao sair da página
+    return () => {
+        if (playerInstance.current) playerInstance.current.destroy();
+    };
+  }, [currentLesson, savedTime]); // Recria se mudar a aula ou carregar nova memória
+
+  // 4. RELÓGIO DE SESSÃO (Dinheiro)
+  useEffect(() => {
+      if (!currentLesson) return;
+      const interval = setInterval(() => {
+          const player = playerInstance.current;
+          if (player && player.playing) {
+              setSessionSeconds(prev => {
+                  const novo = prev + 1;
+                  if (novo > 0 && novo % 600 === 0) pagarRecompensa();
+                  return novo;
+              });
+          }
+      }, 1000);
+      return () => clearInterval(interval);
+  }, [currentLesson]);
+
+
+  // FUNÇÕES AUXILIARES
+  const salvarProgresso = async (time: number) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+        await supabase.from("lesson_progress").upsert({
+            user_id: user.id,
+            lesson_id: currentLesson.id,
+            seconds_watched: Math.floor(time),
+            last_updated: new Date().toISOString()
+        });
+    }
+  };
 
   async function pagarRecompensa() {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) await supabase.rpc('reward_watch_time_v2', { user_id: user.id });
   }
-
-  // CONFIGURAÇÃO DO PLYR
-  const plyrOptions = {
-    autoplay: true,
-    controls: [
-        'play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'fullscreen'
-    ],
-    youtube: { noCookie: true, rel: 0, showinfo: 0, iv_load_policy: 3, modestbranding: 1 }
-  };
 
   if (loading) return (
     <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center text-white">
@@ -149,12 +172,13 @@ export default function AulaPlayerPage() {
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white p-4 md:p-8">
       
-      {/* CSS CUSTOMIZADO DO PLYR */}
+      {/* CSS DO PLAYER DOURADO */}
       <style jsx global>{`
         :root { --plyr-color-main: #C9A66B; }
         .plyr--full-ui input[type=range] { color: #C9A66B; }
         .plyr__control--overlaid { background: rgba(201, 166, 107, 0.9); }
         .plyr--video { border-radius: 12px; overflow: hidden; border: 1px solid #333; }
+        /* Remove clique do iframe do youtube para forçar uso da interface Plyr */
         .plyr__video-embed iframe { pointer-events: none; }
       `}</style>
 
@@ -165,7 +189,7 @@ export default function AulaPlayerPage() {
           <span className="font-bold text-sm tracking-wide">VOLTAR</span>
         </Link>
         <div className="flex items-center gap-4">
-            {hasJumpedToTime && savedTime > 0 && (
+            {hasJumped && (
                 <div className="flex items-center gap-1 text-xs text-green-500 font-bold animate-in fade-in">
                     <History size={12} /> Retomando
                 </div>
@@ -178,20 +202,22 @@ export default function AulaPlayerPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* --- PLAYER PLYR PREMIUM --- */}
+        {/* --- ÁREA DO VÍDEO --- */}
         <div className="lg:col-span-2 space-y-4">
           <div className="aspect-video bg-black rounded-xl shadow-2xl shadow-black relative z-10">
-            {currentLesson && (
-                <Plyr
-                    ref={playerRef}
-                    source={{
-                        type: "video",
-                        sources: [
-                            { src: currentLesson.video_id, provider: "youtube" }
-                        ]
-                    }}
-                    options={plyrOptions}
-                />
+            {currentLesson ? (
+                // O SEGREDO: Uma div simples que o Plyr vai "possuir" depois
+                <div className="plyr__video-embed" id="player-target">
+                    <iframe
+                        src={`https://www.youtube.com/embed/${currentLesson.video_id}?origin=https://plyr.io&iv_load_policy=3&modestbranding=1&playsinline=1&showinfo=0&rel=0&enablejsapi=1`}
+                        allowFullScreen
+                        allow="autoplay"
+                    ></iframe>
+                </div>
+            ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-500">
+                    Selecione uma aula
+                </div>
             )}
           </div>
 
@@ -217,7 +243,7 @@ export default function AulaPlayerPage() {
                 <button
                   key={lesson.id}
                   onClick={() => {
-                    setHasJumpedToTime(false);
+                    setHasJumped(false);
                     setCurrentLesson(lesson);
                   }}
                   className={`w-full flex items-start gap-3 p-3 rounded-lg text-left transition-all border ${
