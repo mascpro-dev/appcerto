@@ -5,11 +5,15 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useParams } from "next/navigation";
 import { ArrowLeft, Loader2, Save, History } from "lucide-react";
 import Link from "next/link";
-import dynamic from "next/dynamic"; // 1. Importar o carregador dinâmico
-import "plyr-react/plyr.css"; 
+import dynamic from "next/dynamic";
+import "plyr-react/plyr.css";
 
-// 2. Importar o Plyr de forma dinâmica (Desliga o SSR para este componente)
-const Plyr = dynamic(() => import("plyr-react"), { ssr: false });
+// --- A CORREÇÃO ESTÁ AQUI ---
+// Adicionamos ".then(mod => mod.default)" para garantir que ele pegue o componente certo
+const Plyr = dynamic(
+  () => import("plyr-react").then((mod) => mod.default),
+  { ssr: false }
+);
 
 export default function AulaPlayerPage() {
   const params = useParams();
@@ -17,7 +21,6 @@ export default function AulaPlayerPage() {
   const courseCode = params?.code as string;
 
   // Refs e Estados
-  // Nota: Removemos a tipagem estrita do ref momentaneamente para evitar erros de importação de tipos
   const playerRef = useRef<any>(null);
   const [lessons, setLessons] = useState<any[]>([]);
   const [currentLesson, setCurrentLesson] = useState<any>(null);
@@ -26,7 +29,7 @@ export default function AulaPlayerPage() {
   // Lógica de Negócio
   const [sessionSeconds, setSessionSeconds] = useState(0); 
   const [savedTime, setSavedTime] = useState(0); 
-  const [hasJumpedToTime, setHasJumpedToTime] = useState(false); // Controle para pular só 1 vez
+  const [hasJumpedToTime, setHasJumpedToTime] = useState(false);
 
   // 1. CARREGAR AULAS
   useEffect(() => {
@@ -80,11 +83,12 @@ export default function AulaPlayerPage() {
     if (!currentLesson) return;
 
     const interval = setInterval(async () => {
-        // Acessa a instância interna do Plyr de forma segura
+        // Acessa o player interno com segurança
         const player = playerRef.current?.plyr;
         
         if (player) {
             // A. PULO INICIAL (Memória)
+            // Tenta pular assim que o vídeo tiver duração válida
             if (!hasJumpedToTime && savedTime > 0 && player.duration > 0) {
                 player.currentTime = savedTime;
                 setHasJumpedToTime(true);
@@ -117,7 +121,7 @@ export default function AulaPlayerPage() {
                 });
             }
         }
-    }, 1000); // Roda a cada 1s
+    }, 1000);
 
     return () => clearInterval(interval);
   }, [currentLesson, savedTime, hasJumpedToTime, supabase]);
@@ -133,7 +137,6 @@ export default function AulaPlayerPage() {
     controls: [
         'play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'fullscreen'
     ],
-    // Truques para limpar o YouTube
     youtube: { noCookie: true, rel: 0, showinfo: 0, iv_load_policy: 3, modestbranding: 1 }
   };
 
